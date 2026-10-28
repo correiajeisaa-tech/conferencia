@@ -56,11 +56,26 @@
                 <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition">
                     <i data-lucide="download" class="w-4 h-4"></i> Exportar
                 </button>
+                <button id="btnReset" class="bg-red-600/80 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition" title="Limpar e carregar nova planilha">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Nova
+                </button>
             </div>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+
+        <!-- Banner de Recuperação -->
+        <div id="recoveryBanner" class="hidden bg-amber-900/40 border border-amber-500/50 p-4 rounded-xl flex items-center justify-between text-sm text-amber-200">
+            <span class="flex items-center gap-2">
+                <i data-lucide="shield-alert" class="w-5 h-5 text-amber-400"></i>
+                Encontramos uma conferência salva em andamento!
+            </span>
+            <div class="flex gap-2">
+                <button id="btnResume" class="bg-amber-500 text-slate-900 px-3 py-1.5 rounded-lg font-semibold hover:bg-amber-400 transition text-xs">Continuar</button>
+                <button id="btnDiscard" class="bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-600 transition text-xs">Descartar</button>
+            </div>
+        </div>
 
         <!-- Passo 1: Importar Arquivo -->
         <section id="importSection" class="bg-slate-800 rounded-2xl border border-slate-700 p-6 md:p-8 text-center">
@@ -185,6 +200,63 @@
         const tableBody = document.getElementById('tableBody');
         const statsBar = document.getElementById('statsBar');
         const lastScanFeedback = document.getElementById('lastScanFeedback');
+        const recoveryBanner = document.getElementById('recoveryBanner');
+
+        // Alerta de confirmação antes de fechar/atualizar a página se houver conferência ativa
+        window.addEventListener('beforeunload', (e) => {
+            if (excelData.length > 0) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        // Verificar se há dados salvos ao carregar a página
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedState = localStorage.getItem('conferencia_state');
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    if (parsed.data && parsed.data.length > 0) {
+                        recoveryBanner.classList.remove('hidden');
+                    }
+                } catch(e) {
+                    localStorage.removeItem('conferencia_state');
+                }
+            }
+        });
+
+        document.getElementById('btnResume').addEventListener('click', () => {
+            const savedState = JSON.parse(localStorage.getItem('conferencia_state'));
+            excelData = savedState.data;
+            labelColumn = savedState.labelColumn;
+
+            recoveryBanner.classList.add('hidden');
+            importSection.classList.add('hidden');
+            scanWorkflow.classList.remove('hidden');
+            statsBar.classList.remove('hidden');
+
+            renderTable();
+            updateStats();
+            barcodeInput.focus();
+        });
+
+        document.getElementById('btnDiscard').addEventListener('click', () => {
+            if (confirm("Tem certeza que deseja descartar a conferência salva?")) {
+                localStorage.removeItem('conferencia_state');
+                recoveryBanner.classList.add('hidden');
+            }
+        });
+
+        function saveStateToLocalStorage() {
+            if (excelData.length > 0 && labelColumn) {
+                const state = {
+                    data: excelData,
+                    labelColumn: labelColumn,
+                    timestamp: new Date().toISOString()
+                };
+                localStorage.setItem('conferencia_state', JSON.stringify(state));
+            }
+        }
 
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -237,6 +309,7 @@
             scanWorkflow.classList.remove('hidden');
             statsBar.classList.remove('hidden');
 
+            saveStateToLocalStorage();
             renderTable();
             updateStats();
             barcodeInput.focus();
@@ -267,17 +340,18 @@
             if (foundItem) {
                 if (foundItem._statusConferencia === 'Conferido') {
                     playErrorSound();
-                    setFeedback(`Atenção: Código "${code}" já foi conferido!`, 'amber');
+                    setFeedback(Atenção: Código "${code}" já foi conferido!, 'amber');
                 } else {
                     foundItem._statusConferencia = 'Conferido';
                     playSuccessSound();
-                    setFeedback(`OK: Código "${code}" conferido com sucesso!`, 'emerald');
+                    setFeedback(OK: Código "${code}" conferido com sucesso!, 'emerald');
                 }
             } else {
                 playErrorSound();
-                setFeedback(`ERRO: Código "${code}" não encontrado na planilha!`, 'red');
+                setFeedback(ERRO: Código "${code}" não encontrado na planilha!, 'red');
             }
 
+            saveStateToLocalStorage();
             renderTable();
             updateStats();
         }
@@ -313,7 +387,7 @@
                     : 'hover:bg-slate-700/30 transition-colors';
 
                 const keys = Object.keys(item).filter(k => k !== labelColumn && k !== '_statusConferencia');
-                const extraDetails = keys.slice(0, 2).map(k => `<span class="text-xs text-slate-400">${k}: <strong class="text-slate-300">${item[k]}</strong></span>`).join(' | ');
+                const extraDetails = keys.slice(0, 2).map(k => <span class="text-xs text-slate-400">${k}: <strong class="text-slate-300">${item[k]}</strong></span>).join(' | ');
 
                 tr.innerHTML = `
                     <td class="p-3.5">
@@ -344,6 +418,7 @@
             const item = excelData.find(i => String(i[labelColumn]).trim() === String(code).trim());
             if (item) {
                 item._statusConferencia = item._statusConferencia === 'Conferido' ? 'Pendente' : 'Conferido';
+                saveStateToLocalStorage();
                 renderTable();
                 updateStats();
             }
@@ -384,7 +459,14 @@
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
-            XLSX.writeFile(workbook, `Conferencia_Etiquetas_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.writeFile(workbook, Conferencia_Etiquetas_${new Date().toISOString().slice(0,10)}.xlsx);
+        });
+
+        document.getElementById('btnReset').addEventListener('click', () => {
+            if (confirm("Deseja realmente iniciar uma nova conferência? Certifique-se de ter exportado os dados da conferência atual.")) {
+                localStorage.removeItem('conferencia_state');
+                location.reload();
+            }
         });
     </script>
 </body>
