@@ -269,3 +269,345 @@
 
         document.getElementById('btnResume').addEventListener('click', () => {
             const savedState = JSON.parse(localStorage.getItem('conferencia_state'));
+            excelData = savedState.data;
+            labelColumn = savedState.labelColumn;
+            productColumn = savedState.productColumn || '';
+            qtyColumn = savedState.qtyColumn || '';
+            statusColumn = savedState.statusColumn || '';
+            activeColumnLabel.textContent = labelColumn;
+
+            recoveryBanner.classList.add('hidden');
+            importSection.classList.add('hidden');
+            scanWorkflow.classList.remove('hidden');
+            statsBar.classList.remove('hidden');
+
+            renderTable();
+            updateStats();
+            barcodeInput.focus();
+        });
+
+        document.getElementById('btnDiscard').addEventListener('click', () => {
+            if (confirm("Tem certeza que deseja descartar a conferência salva?")) {
+                localStorage.removeItem('conferencia_state');
+                recoveryBanner.classList.add('hidden');
+            }
+        });
+
+        function saveStateToLocalStorage() {
+            if (excelData.length > 0 && labelColumn) {
+                const state = {
+                    data: excelData,
+                    labelColumn: labelColumn,
+                    productColumn: productColumn,
+                    qtyColumn: qtyColumn,
+                    statusColumn: statusColumn,
+                    timestamp: new Date().toISOString()
+                };
+                localStorage.setItem('conferencia_state', JSON.stringify(state));
+            }
+        }
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const bstr = evt.target.result;
+                const workbook = XLSX.read(bstr, { type: 'binary' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                excelData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                if (excelData.length === 0) {
+                    alert("A planilha parece estar vazia!");
+                    return;
+                }
+
+                // Identifica se o pedido é cancelado na importação
+                excelData.forEach(row => {
+                    row._statusConferencia = 'Pendente';
+                    row._isCanceled = false;
+                    
+                    // Procura termos de cancelamento em todas as colunas caso o status não seja mapeado diretamente
+                    for (let key in row) {
+                        const valStr = String(row[key] || '').toLowerCase();
+                        if (valStr.includes('cancelado') || valStr.includes('cancelada') || valStr.includes('canceled')) {
+                            row._isCanceled = true;
+                            break;
+                        }
+                    }
+                });
+
+                const columns = Object.keys(excelData[0]);
+                columnSelect.innerHTML = '';
+                productColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
+                qtyColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
+                statusColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
+                
+                let autoSelectedLabel = false;
+                let autoSelectedProduct = false;
+                let autoSelectedQty = false;
+                let autoSelectedStatus = false;
+
+                columns.forEach(col => {
+                    const opt1 = document.createElement('option'); opt1.value = col; opt1.textContent = col;
+                    const opt2 = document.createElement('option'); opt2.value = col; opt2.textContent = col;
+                    const opt3 = document.createElement('option'); opt3.value = col; opt3.textContent = col;
+                    const opt4 = document.createElement('option'); opt4.value = col; opt4.textContent = col;
+                    
+                    const lower = col.toLowerCase();
+                    
+                    if (!autoSelectedLabel && (lower.includes('código') || lower.includes('rastreio') || lower.includes('etiqueta') || lower.includes('tracking') || lower.includes('shipping') || lower.includes('envio') || lower.includes('au'))) {
+                        opt1.selected = true; autoSelectedLabel = true;
+                    }
+                    if (!autoSelectedProduct && (lower.includes('produto') || lower.includes('descrição') || lower.includes('titulo') || lower.includes('item'))) {
+                        opt2.selected = true; autoSelectedProduct = true;
+                    }
+                    if (!autoSelectedQty && (lower.includes('qtd') || lower.includes('quantidade') || lower.includes('unidades'))) {
+                        opt3.selected = true; autoSelectedQty = true;
+                    }
+                    if (!autoSelectedStatus && (lower.includes('status') || lower.includes('situação') || lower.includes('estado') || lower.includes('cancelado'))) {
+                        opt4.selected = true; autoSelectedStatus = true;
+                    }
+
+                    columnSelect.appendChild(opt1);
+                    productColumnSelect.appendChild(opt2);
+                    qtyColumnSelect.appendChild(opt3);
+                    statusColumnSelect.appendChild(opt4);
+                });
+
+                importSection.classList.add('hidden');
+                columnConfigSection.classList.remove('hidden');
+            };
+            reader.readAsBinaryString(file);
+        });
+
+        btnStartScan.addEventListener('click', () => {
+            labelColumn = columnSelect.value;
+            productColumn = productColumnSelect.value;
+            qtyColumn = qtyColumnSelect.value;
+            statusColumn = statusColumnSelect.value;
+            
+            if (!labelColumn) return;
+
+            // Se o usuário mapeou uma coluna de status específica, atualiza a marcação de cancelados com base nela
+            if (statusColumn) {
+                excelData.forEach(row => {
+                    const val = String(row[statusColumn] || '').toLowerCase();
+                    if (val.includes('cancelado') || val.includes('cancelada') || val.includes('canceled')) {
+                        row._isCanceled = true;
+                    }
+                });
+            }
+
+            activeColumnLabel.textContent = labelColumn;
+            columnConfigSection.classList.add('hidden');
+            scanWorkflow.classList.remove('hidden');
+            statsBar.classList.remove('hidden');
+
+            saveStateToLocalStorage();
+            renderTable();
+            updateStats();
+            barcodeInput.focus();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!scanWorkflow.classList.contains('hidden') && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+                barcodeInput.focus();
+            }
+        });
+
+        barcodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const val = barcodeInput.value.trim();
+                barcodeInput.value = '';
+                if (!val) return;
+
+                processBarcode(val);
+            }
+        });
+
+        function processBarcode(code) {
+            const cleanCode = code.toLowerCase();
+
+            const matchingItems = excelData.filter(item => {
+                const itemCode = String(item[labelColumn] || '').trim().toLowerCase();
+                if (!itemCode) return false;
+                return itemCode === cleanCode || itemCode.includes(cleanCode) || cleanCode.includes(itemCode);
+            });
+
+            if (matchingItems.length > 0) {
+                const foundItem = matchingItems[0];
+                const prodName = productColumn ? foundItem[productColumn] : 'Produto não mapeado';
+                const prodQty = qtyColumn ? foundItem[qtyColumn] : '1';
+
+                // ALERTA DE PEDIDO CANCELADO
+                if (foundItem._isCanceled) {
+                    playCanceledSound();
+                    setFeedback(code, `❌ ALERTA: PEDIDO CANCELADO! NÃO ENVIAR!`, 'red', prodName, prodQty);
+                    return;
+                }
+
+                if (matchingItems.length > 1) {
+                    playErrorSound();
+                    setFeedback(code, `⚠️ ERRO: Etiqueta duplicada na planilha!`, 'red', prodName, prodQty);
+                    return;
+                }
+
+                if (foundItem._statusConferencia === 'Conferido') {
+                    playErrorSound();
+                    setFeedback(code, `Já conferido anteriormente!`, 'amber', prodName, prodQty);
+                } else {
+                    foundItem._statusConferencia = 'Conferido';
+                    playSuccessSound();
+                    setFeedback(code, `Conferido com sucesso!`, 'emerald', prodName, prodQty);
+                }
+            } else {
+                playErrorSound();
+                setFeedback(code, `Não encontrado na planilha!`, 'red', 'N/A', '-');
+            }
+
+            saveStateToLocalStorage();
+            renderTable();
+            updateStats();
+        }
+
+        function setFeedback(code, message, color, product, qty) {
+            lastScannedCodeText.textContent = code;
+            lastScanStatusText.textContent = message;
+            lastScanProductInfo.textContent = `Produto: ${product}`;
+            lastScanQtyInfo.textContent = `Quantidade: ${qty}`;
+            
+            lastScanFeedback.className = "w-full lg:w-[350px] px-4 py-3 rounded-xl border text-left transition-all duration-200";
+            
+            if (color === 'emerald') {
+                lastScanFeedback.classList.add('bg-emerald-950/60', 'border-emerald-500');
+                lastScanStatusText.className = "text-xs font-semibold text-emerald-400";
+                lastScannedCodeText.className = "block text-sm font-mono font-bold text-emerald-300 truncate";
+            } else if (color === 'amber') {
+                lastScanFeedback.classList.add('bg-amber-950/60', 'border-amber-500');
+                lastScanStatusText.className = "text-xs font-semibold text-amber-400";
+                lastScannedCodeText.className = "block text-sm font-mono font-bold text-amber-300 truncate";
+            } else if (color === 'red') {
+                lastScanFeedback.classList.add('bg-red-950/60', 'border-red-500');
+                lastScanStatusText.className = "text-xs font-semibold text-red-400";
+                lastScannedCodeText.className = "block text-sm font-mono font-bold text-red-300 truncate";
+            }
+        }
+
+        function renderTable() {
+            tableBody.innerHTML = '';
+
+            const filteredData = excelData.filter(item => {
+                if (currentFilter === 'pending') return !item._isCanceled && item._statusConferencia === 'Pendente';
+                if (currentFilter === 'checked') return !item._isCanceled && item._statusConferencia === 'Conferido';
+                if (currentFilter === 'canceled') return item._isCanceled;
+                return true;
+            });
+
+            filteredData.forEach((item) => {
+                const tr = document.createElement('tr');
+                const isCanceled = item._isCanceled;
+                const isConferido = item._statusConferencia === 'Conferido';
+
+                if (isCanceled) {
+                    tr.className = 'bg-red-950/30 hover:bg-red-900/40 transition-colors border-l-4 border-red-500';
+                } else if (isConferido) {
+                    tr.className = 'bg-emerald-950/20 hover:bg-emerald-900/30 transition-colors';
+                } else {
+                    tr.className = 'hover:bg-slate-700/30 transition-colors';
+                }
+
+                const prodText = productColumn ? item[productColumn] : '<span class="text-slate-500 text-xs">Não mapeado</span>';
+                const qtyText = qtyColumn ? item[qtyColumn] : '1';
+
+                let statusBadge = '';
+                if (isCanceled) {
+                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20"><i data-lucide="ban" class="w-3.5 h-3.5"></i> Cancelado</span>`;
+                } else if (isConferido) {
+                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Conferido</span>`;
+                } else {
+                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Pendente</span>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="p-3.5">${statusBadge}</td>
+                    <td class="p-3.5 font-mono font-medium text-slate-200">${item[labelColumn] || '-'}</td>
+                    <td class="p-3.5 text-slate-300 font-medium max-w-xs truncate" title="${prodText}">${prodText}</td>
+                    <td class="p-3.5 font-bold text-amber-400">${qtyText}</td>
+                    <td class="p-3.5 text-right">
+                        <button onclick="toggleManualCheck('${item[labelColumn]}')" class="text-xs text-slate-400 hover:text-white bg-slate-700/50 hover:bg-slate-700 px-2 py-1 rounded border border-slate-600 transition">
+                            Alternar
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            lucide.createIcons();
+        }
+
+        window.toggleManualCheck = function(code) {
+            const item = excelData.find(i => String(i[labelColumn]).trim() === String(code).trim());
+            if (item) {
+                if (item._isCanceled) {
+                    alert("Atenção: Este pedido está marcado como cancelado na planilha!");
+                }
+                item._statusConferencia = item._statusConferencia === 'Conferido' ? 'Pendente' : 'Conferido';
+                saveStateToLocalStorage();
+                renderTable();
+                updateStats();
+            }
+        };
+
+        function updateStats() {
+            const total = excelData.length;
+            const conferidos = excelData.filter(i => !i._isCanceled && i._statusConferencia === 'Conferido').length;
+            const cancelados = excelData.filter(i => i._isCanceled).length;
+            const pendentes = total - conferidos - cancelados;
+
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('conferidosCount').textContent = conferidos;
+            document.getElementById('pendentesCount').textContent = pendentes;
+        }
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => {
+                    b.classList.remove('bg-blue-600', 'text-white');
+                    b.classList.add('bg-slate-700', 'text-slate-300');
+                });
+                e.target.classList.remove('bg-slate-700', 'text-slate-300');
+                e.target.classList.add('bg-blue-600', 'text-white');
+
+                currentFilter = e.target.dataset.filter;
+                renderTable();
+            });
+        });
+
+        document.getElementById('btnExport').addEventListener('click', () => {
+            const exportData = excelData.map(row => {
+                const newRow = { ...row };
+                newRow['Status Conferência'] = newRow._isCanceled ? 'CANCELADO' : newRow._statusConferencia;
+                delete newRow._statusConferencia;
+                delete newRow._isCanceled;
+                return newRow;
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
+            XLSX.writeFile(workbook, `Conferencia_Etiquetas_${new Date().toISOString().slice(0,10)}.xlsx`);
+        });
+
+        document.getElementById('btnReset').addEventListener('click', () => {
+            if (confirm("Deseja realmente iniciar uma nova conferência? Certifique-se de ter exportado os dados da conferência atual.")) {
+                localStorage.removeItem('conferencia_state');
+                location.reload();
+            }
+        });
+    </script>
+</body>
+</html>
