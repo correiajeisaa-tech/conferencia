@@ -102,25 +102,25 @@
             </h3>
             <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                 <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-2">Código/Rastreio:</label>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Coluna de Código/Rastreio:</label>
                     <select id="columnSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500"></select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-2">Produto/Descrição:</label>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Coluna do Produto/Descrição:</label>
                     <select id="productColumnSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500">
-                        <option value="">(Opcional)</option>
+                        <option value="">(Opcional / Nenhuma)</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-2">Quantidade:</label>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Coluna da Quantidade:</label>
                     <select id="qtyColumnSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500">
-                        <option value="">(Opcional)</option>
+                        <option value="">(Opcional / Nenhuma)</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-300 mb-2">Status / Cancelamento:</label>
                     <select id="statusColumnSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500">
-                        <option value="">(Opcional)</option>
+                        <option value="">(Opcional / Nenhuma)</option>
                     </select>
                 </div>
             </div>
@@ -319,7 +319,6 @@
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     
-                    // Converte ignorando as primeiras linhas de cabeçalho descritivo (procura automaticamente onde começa a tabela real)
                     const rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
                     if (!rawJson || rawJson.length === 0) {
@@ -327,23 +326,21 @@
                         return;
                     }
 
-                    // Acha a linha de cabeçalho real (linha que contém palavras-chave como 'rastreio', 'código', 'envio' ou 'MEL')
+                    // Localiza a linha do cabeçalho real
                     let headerRowIndex = 0;
                     for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
                         const rowStr = JSON.stringify(rawJson[i]).toLowerCase();
-                        if (rowStr.includes('rastreio') || rowStr.includes('código') || rowStr.includes('codigo') || rowStr.includes('mel') || rowStr.includes('shipping') || rowStr.includes('tracking')) {
+                        if (rowStr.includes('número de rastreamento') || rowStr.includes('rastreamento') || rowStr.includes('código') || rowStr.includes('codigo') || rowStr.includes('shipping') || rowStr.includes('tracking') || rowStr.includes('nº do pedido')) {
                             headerRowIndex = i;
                             break;
                         }
                     }
 
-                    // Reconstrói os dados limpos a partir da linha correta do cabeçalho
                     const headers = rawJson[headerRowIndex];
                     excelData = [];
 
                     for (let i = headerRowIndex + 1; i < rawJson.length; i++) {
                         const rowCols = rawJson[i];
-                        // Ignora linhas totalmente vazias
                         if (!rowCols || rowCols.every(cell => String(cell).trim() === "")) continue;
 
                         let rowObj = {};
@@ -359,7 +356,6 @@
                             rowObj._statusConferencia = 'Pendente';
                             rowObj._isCanceled = false;
 
-                            // Verifica cancelamento
                             for (let key in rowObj) {
                                 const valStr = String(rowObj[key] || '').toLowerCase();
                                 if (valStr.includes('cancelado') || valStr.includes('cancelada') || valStr.includes('canceled')) {
@@ -371,16 +367,11 @@
                         }
                     }
 
-                    if (excelData.length === 0) {
-                        alert("Não foi possível encontrar dados válidos após o cabeçalho da planilha.");
-                        return;
-                    }
-
                     const columns = Object.keys(excelData[0]).filter(k => !k.startsWith('_'));
                     columnSelect.innerHTML = '';
-                    productColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
-                    qtyColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
-                    statusColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
+                    productColumnSelect.innerHTML = '<option value="">(Opcional / Nenhuma)</option>';
+                    qtyColumnSelect.innerHTML = '<option value="">(Opcional / Nenhuma)</option>';
+                    statusColumnSelect.innerHTML = '<option value="">(Opcional / Nenhuma)</option>';
                     
                     let autoSelectedLabel = false;
                     let autoSelectedProduct = false;
@@ -395,16 +386,16 @@
                         
                         const lower = col.toLowerCase();
                         
-                        if (!autoSelectedLabel && (lower.includes('código') || lower.includes('codigo') || lower.includes('rastreio') || lower.includes('etiqueta') || lower.includes('tracking') || lower.includes('shipping') || lower.includes('envio') || lower.includes('au'))) {
+                        if (!autoSelectedLabel && (lower.includes('número de rastreamento') || lower.includes('rastreamento') || lower.includes('código') || lower.includes('codigo') || lower.includes('tracking') || lower.includes('shipping') || lower.includes('nº do pedido'))) {
                             opt1.selected = true; autoSelectedLabel = true;
                         }
-                        if (!autoSelectedProduct && (lower.includes('produto') || lower.includes('descrição') || lower.includes('descricao') || lower.includes('titulo') || lower.includes('item'))) {
+                        if (!autoSelectedProduct && (lower.includes('produto') || lower.includes('descrição') || lower.includes('descricao') || lower.includes('titulo') || lower.includes('item') || lower.includes('nome do produto'))) {
                             opt2.selected = true; autoSelectedProduct = true;
                         }
                         if (!autoSelectedQty && (lower.includes('qtd') || lower.includes('quantidade') || lower.includes('unidades'))) {
                             opt3.selected = true; autoSelectedQty = true;
                         }
-                        if (!autoSelectedStatus && (lower.includes('status') || lower.includes('situação') || lower.includes('situacao') || lower.includes('estado') || lower.includes('cancelado'))) {
+                        if (!autoSelectedStatus && (lower.includes('status') || lower.includes('situação') || lower.includes('situacao') || lower.includes('estado'))) {
                             opt4.selected = true; autoSelectedStatus = true;
                         }
 
@@ -417,7 +408,7 @@
                     importSection.classList.add('hidden');
                     columnConfigSection.classList.remove('hidden');
                 } catch(err) {
-                    alert("Erro ao ler a planilha. Verifique se o arquivo não está corrompido.");
+                    alert("Erro ao ler a planilha.");
                     console.error(err);
                 }
             };
@@ -479,8 +470,8 @@
 
             if (matchingItems.length > 0) {
                 const foundItem = matchingItems[0];
-                const prodName = productColumn ? foundItem[productColumn] : 'Produto não mapeado';
-                const prodQty = qtyColumn ? foundItem[qtyColumn] : '1';
+                const prodName = productColumn && foundItem[productColumn] ? foundItem[productColumn] : 'Não mapeado';
+                const prodQty = qtyColumn && foundItem[qtyColumn] ? foundItem[qtyColumn] : '1';
 
                 if (foundItem._isCanceled) {
                     playCanceledSound();
@@ -558,8 +549,8 @@
                     tr.className = 'hover:bg-slate-700/30 transition-colors';
                 }
 
-                const prodText = productColumn ? item[productColumn] : '<span class="text-slate-500 text-xs">Não mapeado</span>';
-                const qtyText = qtyColumn ? item[qtyColumn] : '1';
+                const prodText = productColumn && item[productColumn] ? item[productColumn] : 'Não mapeado';
+                const qtyText = qtyColumn && item[qtyColumn] ? item[qtyColumn] : '1';
 
                 let statusBadge = '';
                 if (isCanceled) {
