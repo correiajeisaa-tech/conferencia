@@ -340,15 +340,15 @@
             if (foundItem) {
                 if (foundItem._statusConferencia === 'Conferido') {
                     playErrorSound();
-                    setFeedback(Atenção: Código "${code}" já foi conferido!, 'amber');
+                    setFeedback(`Atenção: Código "${code}" já foi conferido!`, 'amber');
                 } else {
                     foundItem._statusConferencia = 'Conferido';
                     playSuccessSound();
-                    setFeedback(OK: Código "${code}" conferido com sucesso!, 'emerald');
+                    setFeedback(`OK: Código "${code}" conferido com sucesso!`, 'emerald');
                 }
             } else {
                 playErrorSound();
-                setFeedback(ERRO: Código "${code}" não encontrado na planilha!, 'red');
+                setFeedback(`ERRO: Código "${code}" não encontrado na planilha!`, 'red');
             }
 
             saveStateToLocalStorage();
@@ -387,7 +387,7 @@
                     : 'hover:bg-slate-700/30 transition-colors';
 
                 const keys = Object.keys(item).filter(k => k !== labelColumn && k !== '_statusConferencia');
-                const extraDetails = keys.slice(0, 2).map(k => <span class="text-xs text-slate-400">${k}: <strong class="text-slate-300">${item[k]}</strong></span>).join(' | ');
+                const extraDetails = keys.slice(0, 2).map(k => `<span class="text-xs text-slate-400">${k}: <strong class="text-slate-300">${item[k]}</strong></span>`).join(' | ');
 
                 tr.innerHTML = `
                     <td class="p-3.5">
@@ -459,7 +459,7 @@
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
-            XLSX.writeFile(workbook, Conferencia_Etiquetas_${new Date().toISOString().slice(0,10)}.xlsx);
+            XLSX.writeFile(workbook, `Conferencia_Etiquetas_${new Date().toISOString().slice(0,10)}.xlsx`);
         });
 
         document.getElementById('btnReset').addEventListener('click', () => {
