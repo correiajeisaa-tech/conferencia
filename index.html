@@ -8,6 +8,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS para ler e exportar arquivos Excel/CSV -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -32,32 +35,31 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold text-white">Conferência de Encomendas</h1>
-                    <p class="text-xs text-slate-400">Mercado Livre & Shopee Expedição</p>
+                    <p class="text-xs text-slate-400">Mercado Livre & Shopee Expedição (Nuvem)</p>
                 </div>
             </div>
 
-            <!-- Placar de Status -->
-            <div id="statsBar" class="hidden flex items-center gap-4 bg-slate-900 px-4 py-2 rounded-xl border border-slate-700">
+            <!-- Placar de Status & Sala Ativa -->
+            <div id="statsBar" class="hidden flex items-center gap-3 bg-slate-900 px-4 py-2 rounded-xl border border-slate-700">
+                <span id="roomBadge" class="text-xs bg-blue-600/30 text-blue-400 border border-blue-500/30 px-2 py-1 rounded font-mono">Sala: -</span>
+                <div class="h-6 w-px bg-slate-700"></div>
                 <div class="text-center">
-                    <span class="text-xs text-slate-400 block">Total</span>
-                    <span id="totalCount" class="text-lg font-bold text-slate-200">0</span>
+                    <span class="text-[10px] text-slate-400 block">Total</span>
+                    <span id="totalCount" class="text-sm font-bold text-slate-200">0</span>
                 </div>
-                <div class="h-8 w-px bg-slate-700"></div>
                 <div class="text-center">
-                    <span class="text-xs text-emerald-400 block">Conferidos</span>
-                    <span id="conferidosCount" class="text-lg font-bold text-emerald-400">0</span>
+                    <span class="text-[10px] text-emerald-400 block">Conferidos</span>
+                    <span id="conferidosCount" class="text-sm font-bold text-emerald-400">0</span>
                 </div>
-                <div class="h-8 w-px bg-slate-700"></div>
                 <div class="text-center">
-                    <span class="text-xs text-amber-400 block">Pendentes</span>
-                    <span id="pendentesCount" class="text-lg font-bold text-amber-400">0</span>
+                    <span class="text-[10px] text-amber-400 block">Pendentes</span>
+                    <span id="pendentesCount" class="text-sm font-bold text-amber-400">0</span>
                 </div>
-                <div class="h-8 w-px bg-slate-700"></div>
-                <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition">
-                    <i data-lucide="download" class="w-4 h-4"></i> Exportar
+                <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition ml-2">
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i> Exportar
                 </button>
-                <button id="btnReset" class="bg-red-600/80 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition" title="Limpar e carregar nova planilha">
-                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Nova
+                <button id="btnChangeRoom" class="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2.5 py-1.5 rounded-lg transition" title="Mudar de Sala">
+                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Sair
                 </button>
             </div>
         </div>
@@ -65,26 +67,31 @@
 
     <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
 
-        <!-- Banner de Recuperação -->
-        <div id="recoveryBanner" class="hidden bg-amber-900/40 border border-amber-500/50 p-4 rounded-xl flex items-center justify-between text-sm text-amber-200">
-            <span class="flex items-center gap-2">
-                <i data-lucide="shield-alert" class="w-5 h-5 text-amber-400"></i>
-                Encontramos uma conferência salva em andamento!
-            </span>
-            <div class="flex gap-2">
-                <button id="btnResume" class="bg-amber-500 text-slate-900 px-3 py-1.5 rounded-lg font-semibold hover:bg-amber-400 transition text-xs">Continuar</button>
-                <button id="btnDiscard" class="bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-600 transition text-xs">Descartar</button>
+        <!-- Passo 0: Tela de Identificação da Sala -->
+        <section id="roomSection" class="bg-slate-800 rounded-2xl border border-slate-700 p-8 max-w-md mx-auto text-center space-y-6 mt-10 shadow-2xl">
+            <div class="w-16 h-16 bg-blue-600/20 text-blue-400 rounded-full flex items-center justify-center mx-auto border border-blue-500/30">
+                <i data-lucide="cloud-cog" class="w-8 h-8"></i>
             </div>
-        </div>
+            <div>
+                <h2 class="text-xl font-bold text-white">Aceder à Sala de Conferência</h2>
+                <p class="text-xs text-slate-400 mt-1">Digite o mesmo nome de sala no computador e no coletor para sincronizar em tempo real.</p>
+            </div>
+            <div class="space-y-3">
+                <input type="text" id="roomInput" placeholder="Ex: expedicao01" autocomplete="off" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-center text-lg font-mono text-white placeholder-slate-600 focus:outline-none focus:border-blue-500">
+                <button id="btnJoinRoom" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-xl transition shadow-lg flex items-center justify-center gap-2">
+                    <i data-lucide="wifi" class="w-4 h-4"></i> Entrar na Sala
+                </button>
+            </div>
+        </section>
 
-        <!-- Passo 1: Importar Arquivo -->
-        <section id="importSection" class="bg-slate-800 rounded-2xl border border-slate-700 p-6 md:p-8 text-center">
+        <!-- Passo 1: Importar Arquivo (Visível apenas se a sala não tiver dados) -->
+        <section id="importSection" class="hidden bg-slate-800 rounded-2xl border border-slate-700 p-6 md:p-8 text-center">
             <div class="max-w-xl mx-auto space-y-4">
                 <div class="w-16 h-16 bg-slate-700 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-2">
                     <i data-lucide="file-up" class="w-8 h-8"></i>
                 </div>
                 <h2 class="text-xl font-bold">Importe sua Planilha do ML ou Shopee</h2>
-                <p class="text-sm text-slate-400">O sistema identifica automaticamente as etiquetas, produtos e quantidades.</p>
+                <p class="text-sm text-slate-400">Ao importar aqui, os dados serão enviados para a nuvem e sincronizados instantaneamente no coletor.</p>
                 
                 <div class="pt-2">
                     <label for="fileInput" class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-3 rounded-xl inline-flex items-center gap-2 shadow-lg transition">
@@ -95,7 +102,7 @@
             </div>
         </section>
 
-        <!-- Passo 2: Campo de Bipagem e Filtros -->
+        <!-- Passo 2: Campo de Bipagem e Tabela -->
         <div id="scanWorkflow" class="hidden space-y-6">
             <!-- Campo Principal de Bipagem -->
             <section class="bg-slate-800 rounded-2xl border-2 border-blue-500 p-6 scan-pulse shadow-xl">
@@ -104,7 +111,7 @@
                         <i data-lucide="scan-barcode" class="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
                         <input type="text" id="barcodeInput" placeholder="Bipe o código de barras ou digite o rastreio aqui..." autocomplete="off" autofocus class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-slate-500 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20">
                     </div>
-                    <!-- Destaque do Último Bipado com Etiqueta Clara -->
+                    <!-- Destaque do Último Bipado -->
                     <div id="lastScanFeedback" class="w-full lg:w-[380px] px-4 py-3 rounded-xl border border-slate-700 bg-slate-900 text-left">
                         <div class="flex justify-between items-center border-b border-slate-800 pb-1 mb-1">
                             <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Último Bipado</span>
@@ -122,7 +129,7 @@
             <section class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
                 <div class="p-4 border-b border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 class="font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="list" class="w-5 h-5 text-blue-400"></i> Lista de Encomendas e Etiquetas
+                        <i data-lucide="list" class="w-5 h-5 text-blue-400"></i> Lista Sincronizada em Tempo Real
                     </h3>
                     <div class="flex gap-2">
                         <button class="filter-btn active bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium" data-filter="all">Todos</button>
@@ -153,6 +160,13 @@
     </main>
 
     <script>
+        // Configuração do Firebase
+        const firebaseConfig = {
+            projectId: "conferencia-expedicao-ml-shopee"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         lucide.createIcons();
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -169,87 +183,101 @@
             osc.stop(audioCtx.currentTime + duration);
         }
 
-        function playSuccessSound() {
-            playBeep(880, 'sine', 0.12);
-            setTimeout(() => playBeep(1320, 'sine', 0.15), 100);
-        }
+        function playSuccessSound() { playBeep(880, 'sine', 0.12); setTimeout(() => playBeep(1320, 'sine', 0.15), 100); }
+        function playErrorSound() { playBeep(220, 'sawtooth', 0.25); setTimeout(() => playBeep(180, 'sawtooth', 0.3), 200); }
+        function playCanceledSound() { playBeep(150, 'sawtooth', 0.3); setTimeout(() => playBeep(100, 'sawtooth', 0.4), 250); }
 
-        function playErrorSound() {
-            playBeep(220, 'sawtooth', 0.25);
-            setTimeout(() => playBeep(180, 'sawtooth', 0.3), 200);
-        }
-
-        function playCanceledSound() {
-            playBeep(150, 'sawtooth', 0.3);
-            setTimeout(() => playBeep(100, 'sawtooth', 0.4), 250);
-        }
-
+        let currentRoom = '';
         let excelData = [];
         let currentFilter = 'all';
+        let unsubscribeFirestore = null;
 
-        const fileInput = document.getElementById('fileInput');
+        const roomSection = document.getElementById('roomSection');
         const importSection = document.getElementById('importSection');
         const scanWorkflow = document.getElementById('scanWorkflow');
+        const statsBar = document.getElementById('statsBar');
+        const roomInput = document.getElementById('roomInput');
+        const btnJoinRoom = document.getElementById('btnJoinRoom');
+        const btnChangeRoom = document.getElementById('btnChangeRoom');
+        const roomBadge = document.getElementById('roomBadge');
+        const fileInput = document.getElementById('fileInput');
         const barcodeInput = document.getElementById('barcodeInput');
         const tableBody = document.getElementById('tableBody');
-        const statsBar = document.getElementById('statsBar');
         const lastScanFeedback = document.getElementById('lastScanFeedback');
         const lastScannedCodeText = document.getElementById('lastScannedCodeText');
         const lastScanStatusText = document.getElementById('lastScanStatusText');
         const lastScanProductInfo = document.getElementById('lastScanProductInfo');
         const lastScanQtyInfo = document.getElementById('lastScanQtyInfo');
-        const recoveryBanner = document.getElementById('recoveryBanner');
 
-        window.addEventListener('beforeunload', (e) => {
-            if (excelData.length > 0) {
-                e.preventDefault();
-                e.returnValue = '';
-            }
-        });
-
+        // Recuperar sala salva anteriormente
         window.addEventListener('DOMContentLoaded', () => {
-            const savedState = localStorage.getItem('conferencia_state_v3');
-            if (savedState) {
-                try {
-                    const parsed = JSON.parse(savedState);
-                    if (parsed.data && parsed.data.length > 0) {
-                        recoveryBanner.classList.remove('hidden');
-                    }
-                } catch(e) {
-                    localStorage.removeItem('conferencia_state_v3');
-                }
+            const savedRoom = localStorage.getItem('conferencia_room');
+            if (savedRoom) {
+                roomInput.value = savedRoom;
             }
         });
 
-        document.getElementById('btnResume').addEventListener('click', () => {
-            const savedState = JSON.parse(localStorage.getItem('conferencia_state_v3'));
-            excelData = savedState.data;
+        btnJoinRoom.addEventListener('click', () => {
+            const room = roomInput.value.trim().toLowerCase();
+            if (!room) {
+                alert("Digite o nome da sala!");
+                return;
+            }
+            currentRoom = room;
+            localStorage.setItem('conferencia_room', room);
+            roomBadge.textContent = `Sala: ${room}`;
 
-            recoveryBanner.classList.add('hidden');
+            roomSection.classList.add('hidden');
+            listenToRoom(room);
+        });
+
+        btnChangeRoom.addEventListener('click', () => {
+            if (unsubscribeFirestore) unsubscribeFirestore();
+            localStorage.removeItem('conferencia_room');
+            scanWorkflow.classList.add('hidden');
             importSection.classList.add('hidden');
-            scanWorkflow.classList.remove('hidden');
-            statsBar.classList.remove('hidden');
-
-            renderTable();
-            updateStats();
-            barcodeInput.focus();
+            statsBar.classList.add('hidden');
+            roomSection.classList.remove('hidden');
         });
 
-        document.getElementById('btnDiscard').addEventListener('click', () => {
-            if (confirm("Tem certeza que deseja descartar a conferência salva?")) {
-                localStorage.removeItem('conferencia_state_v3');
-                recoveryBanner.classList.add('hidden');
-            }
-        });
+        function listenToRoom(room) {
+            if (unsubscribeFirestore) unsubscribeFirestore();
 
-        function saveStateToLocalStorage() {
-            if (excelData.length > 0) {
-                const state = {
-                    data: excelData,
-                    timestamp: new Date().toISOString()
-                };
-                localStorage.setItem('conferencia_state_v3', JSON.stringify(state));
-            }
+            unsubscribeFirestore = db.collection('salas').doc(room).onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    excelData = data.items || [];
+
+                    if (excelData.length > 0) {
+                        importSection.classList.add('hidden');
+                        scanWorkflow.classList.remove('hidden');
+                        statsBar.classList.remove('hidden');
+                        renderTable();
+                        updateStats();
+                        barcodeInput.focus();
+                    } else {
+                        scanWorkflow.classList.add('hidden');
+                        statsBar.classList.add('hidden');
+                        importSection.classList.remove('hidden');
+                    }
+                } else {
+                    // Sala vazia, cria documento inicial
+                    db.collection('salas').doc(room).set({ items: [] });
+                    scanWorkflow.classList.add('hidden');
+                    statsBar.classList.add('hidden');
+                    importSection.classList.remove('hidden');
+                }
+            });
+        }
+
+        function saveToCloud() {
+            if (!currentRoom) return;
+            db.collection('salas').doc(currentRoom).set({
+                items: excelData,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).catch(err => {
+                console.error("Erro ao sincronizar com a nuvem:", err);
+            });
         }
 
         fileInput.addEventListener('change', (e) => {
@@ -261,31 +289,25 @@
                 try {
                     const data = new Uint8Array(evt.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                     const rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
                     if (!rawJson || rawJson.length === 0) {
-                        alert("A planilha parece estar vazia!");
+                        alert("A planilha está vazia!");
                         return;
                     }
 
-                    // Encontra a linha de cabeçalho
                     let headerRowIndex = 0;
                     for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
                         const rowStr = JSON.stringify(rawJson[i]).toLowerCase();
-                        if (rowStr.includes('rastreamento') || rowStr.includes('rastreio') || rowStr.includes('código') || rowStr.includes('codigo') || rowStr.includes('tracking') || rowStr.includes('shipping') || rowStr.includes('pedido') || rowStr.includes('mel') || rowStr.includes('etiqueta')) {
+                        if (rowStr.includes('rastreamento') || rowStr.includes('rastreio') || rowStr.includes('código') || rowStr.includes('codigo') || rowStr.includes('tracking') || rowStr.includes('shipping') || rowStr.includes('pedido') || rowStr.includes('etiqueta')) {
                             headerRowIndex = i;
                             break;
                         }
                     }
 
                     const headers = rawJson[headerRowIndex];
-                    
-                    let codeColIdx = -1;
-                    let prodColIdx = -1;
-                    let qtyColIdx = -1;
+                    let codeColIdx = -1, prodColIdx = -1, qtyColIdx = -1;
 
                     headers.forEach((h, idx) => {
                         const lower = String(h || '').toLowerCase();
@@ -300,10 +322,8 @@
                         }
                     });
 
-                    // Caso o cabeçalho não tenha palavra-chave exata, varre a primeira coluna válida como código
                     if (codeColIdx === -1) codeColIdx = 0;
-
-                    excelData = [];
+                    let newItems = [];
 
                     for (let i = headerRowIndex + 1; i < rawJson.length; i++) {
                         const rowCols = rawJson[i];
@@ -323,7 +343,7 @@
                             }
                         });
 
-                        excelData.push({
+                        newItems.push({
                             code: codeVal,
                             product: prodVal,
                             qty: qtyVal,
@@ -332,16 +352,16 @@
                         });
                     }
 
-                    if (excelData.length === 0) {
-                        alert("Não foram encontrados códigos de rastreio válidos na planilha.");
+                    if (newItems.length === 0) {
+                        alert("Não foram encontrados códigos válidos.");
                         return;
                     }
 
+                    excelData = newItems;
+                    saveToCloud();
                     importSection.classList.add('hidden');
                     scanWorkflow.classList.remove('hidden');
                     statsBar.classList.remove('hidden');
-
-                    saveStateToLocalStorage();
                     renderTable();
                     updateStats();
                     barcodeInput.focus();
@@ -365,14 +385,12 @@
                 const val = barcodeInput.value.trim();
                 barcodeInput.value = '';
                 if (!val) return;
-
                 processBarcode(val);
             }
         });
 
         function processBarcode(code) {
             const cleanCode = code.toLowerCase();
-
             const matchingItems = excelData.filter(item => {
                 const itemCode = String(item.code || '').trim().toLowerCase();
                 if (!itemCode) return false;
@@ -401,13 +419,13 @@
                     foundItem.status = 'Conferido';
                     playSuccessSound();
                     setFeedback(code, `Conferido com sucesso!`, 'emerald', foundItem.product, foundItem.qty);
+                    saveToCloud();
                 }
             } else {
                 playErrorSound();
                 setFeedback(code, `Não encontrado na planilha!`, 'red', 'N/A', '-');
             }
 
-            saveStateToLocalStorage();
             renderTable();
             updateStats();
         }
@@ -419,25 +437,20 @@
             lastScanQtyInfo.textContent = `Quantidade: ${qty}`;
             
             lastScanFeedback.className = "w-full lg:w-[380px] px-4 py-3 rounded-xl border text-left transition-all duration-200";
-            
             if (color === 'emerald') {
                 lastScanFeedback.classList.add('bg-emerald-950/60', 'border-emerald-500');
                 lastScanStatusText.className = "text-xs font-semibold text-emerald-400";
-                lastScannedCodeText.className = "block text-sm font-mono font-bold text-emerald-300 truncate";
             } else if (color === 'amber') {
                 lastScanFeedback.classList.add('bg-amber-950/60', 'border-amber-500');
                 lastScanStatusText.className = "text-xs font-semibold text-amber-400";
-                lastScannedCodeText.className = "block text-sm font-mono font-bold text-amber-300 truncate";
             } else if (color === 'red') {
                 lastScanFeedback.classList.add('bg-red-950/60', 'border-red-500');
                 lastScanStatusText.className = "text-xs font-semibold text-red-400";
-                lastScannedCodeText.className = "block text-sm font-mono font-bold text-red-300 truncate";
             }
         }
 
         function renderTable() {
             tableBody.innerHTML = '';
-
             const filteredData = excelData.filter(item => {
                 if (currentFilter === 'pending') return !item.isCanceled && item.status === 'Pendente';
                 if (currentFilter === 'checked') return !item.isCanceled && item.status === 'Conferido';
@@ -450,22 +463,14 @@
                 const isCanceled = item.isCanceled;
                 const isConferido = item.status === 'Conferido';
 
-                if (isCanceled) {
-                    tr.className = 'bg-red-950/30 hover:bg-red-900/40 transition-colors border-l-4 border-red-500';
-                } else if (isConferido) {
-                    tr.className = 'bg-emerald-950/20 hover:bg-emerald-900/30 transition-colors';
-                } else {
-                    tr.className = 'hover:bg-slate-700/30 transition-colors';
-                }
+                if (isCanceled) tr.className = 'bg-red-950/30 hover:bg-red-900/40 transition-colors border-l-4 border-red-500';
+                else if (isConferido) tr.className = 'bg-emerald-950/20 hover:bg-emerald-900/30 transition-colors';
+                else tr.className = 'hover:bg-slate-700/30 transition-colors';
 
                 let statusBadge = '';
-                if (isCanceled) {
-                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20"><i data-lucide="ban" class="w-3.5 h-3.5"></i> Cancelado</span>`;
-                } else if (isConferido) {
-                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Conferido</span>`;
-                } else {
-                    statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Pendente</span>`;
-                }
+                if (isCanceled) statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20"><i data-lucide="ban" class="w-3.5 h-3.5"></i> Cancelado</span>`;
+                else if (isConferido) statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Conferido</span>`;
+                else statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Pendente</span>`;
 
                 tr.innerHTML = `
                     <td class="p-3.5">${statusBadge}</td>
@@ -480,18 +485,15 @@
                 `;
                 tableBody.appendChild(tr);
             });
-
             lucide.createIcons();
         }
 
         window.toggleManualCheck = function(code) {
             const item = excelData.find(i => String(i.code).trim() === String(code).trim());
             if (item) {
-                if (item.isCanceled) {
-                    alert("Atenção: Este pedido está marcado como cancelado na planilha!");
-                }
+                if (item.isCanceled) alert("Atenção: Este pedido está marcado como cancelado na planilha!");
                 item.status = item.status === 'Conferido' ? 'Pendente' : 'Conferido';
-                saveStateToLocalStorage();
+                saveToCloud();
                 renderTable();
                 updateStats();
             }
@@ -516,7 +518,6 @@
                 });
                 e.target.classList.remove('bg-slate-700', 'text-slate-300');
                 e.target.classList.add('bg-blue-600', 'text-white');
-
                 currentFilter = e.target.dataset.filter;
                 renderTable();
             });
@@ -529,18 +530,10 @@
                 'Quantidade': row.qty,
                 'Status Conferência': row.isCanceled ? 'CANCELADO' : row.status
             }));
-
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
             XLSX.writeFile(workbook, `Conferencia_Etiquetas_${new Date().toISOString().slice(0,10)}.xlsx`);
-        });
-
-        document.getElementById('btnReset').addEventListener('click', () => {
-            if (confirm("Deseja realmente iniciar uma nova conferência? Certifique-se de ter exportado os dados da conferência atual.")) {
-                localStorage.removeItem('conferencia_state_v3');
-                location.reload();
-            }
         });
     </script>
 </body>
