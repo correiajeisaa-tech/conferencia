@@ -1,410 +1,391 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conferência de Etiquetas - Mercado Livre & Shopee</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SheetJS para ler e exportar arquivos Excel/CSV -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        .scan-pulse {
-            animation: pulse-border 1.5s infinite;
-        }
-        @keyframes pulse-border {
-            0% { border-color: rgba(59, 130, 246, 0.5); }
-            50% { border-color: rgba(59, 130, 246, 1); }
-            100% { border-color: rgba(59, 130, 246, 0.5); }
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conferência de Etiquetas - Mercado Livre & Shopee</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS para ler e exportar arquivos Excel/CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .scan-pulse {
+            animation: pulse-border 1.5s infinite;
+        }
+        @keyframes pulse-border {
+            0% { border-color: rgba(59, 130, 246, 0.5); }
+            50% { border-color: rgba(59, 130, 246, 1); }
+            100% { border-color: rgba(59, 130, 246, 0.5); }
+        }
+    </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
 
-    <!-- Header -->
-    <header class="bg-slate-800 border-b border-slate-700 p-4 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
-                <div class="bg-amber-500 p-2 rounded-lg text-slate-900">
-                    <i data-lucide="package-check" class="w-7 h-7"></i>
-                </div>
-                <div>
-                    <h1 class="text-xl font-bold text-white">Conferência de Encomendas</h1>
-                    <p class="text-xs text-slate-400">Mercado Livre & Shopee Expedição</p>
-                </div>
-            </div>
+    <!-- Header -->
+    <header class="bg-slate-800 border-b border-slate-700 p-4 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-amber-500 p-2 rounded-lg text-slate-900">
+                    <i data-lucide="package-check" class="w-7 h-7"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">Conferência de Encomendas</h1>
+                    <p class="text-xs text-slate-400">Mercado Livre & Shopee Expedição</p>
+                </div>
+            </div>
 
-            <!-- Placar de Status -->
-            <div id="statsBar" class="hidden flex items-center gap-4 bg-slate-900 px-4 py-2 rounded-xl border border-slate-700">
-                <div class="text-center">
-                    <span class="text-xs text-slate-400 block">Total</span>
-                    <span id="totalCount" class="text-lg font-bold text-slate-200">0</span>
-                </div>
-                <div class="h-8 w-px bg-slate-700"></div>
-                <div class="text-center">
-                    <span class="text-xs text-emerald-400 block">Conferidos</span>
-                    <span id="conferidosCount" class="text-lg font-bold text-emerald-400">0</span>
-                </div>
-                <div class="h-8 w-px bg-slate-700"></div>
-                <div class="text-center">
-                    <span class="text-xs text-amber-400 block">Pendentes</span>
-                    <span id="pendentesCount" class="text-lg font-bold text-amber-400">0</span>
-                </div>
-                <div class="h-8 w-px bg-slate-700"></div>
-                <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition">
-                    <i data-lucide="download" class="w-4 h-4"></i> Exportar
-                </button>
-            </div>
-        </div>
-    </header>
+            <!-- Placar de Status -->
+            <div id="statsBar" class="hidden flex items-center gap-4 bg-slate-900 px-4 py-2 rounded-xl border border-slate-700">
+                <div class="text-center">
+                    <span class="text-xs text-slate-400 block">Total</span>
+                    <span id="totalCount" class="text-lg font-bold text-slate-200">0</span>
+                </div>
+                <div class="h-8 w-px bg-slate-700"></div>
+                <div class="text-center">
+                    <span class="text-xs text-emerald-400 block">Conferidos</span>
+                    <span id="conferidosCount" class="text-lg font-bold text-emerald-400">0</span>
+                </div>
+                <div class="h-8 w-px bg-slate-700"></div>
+                <div class="text-center">
+                    <span class="text-xs text-amber-400 block">Pendentes</span>
+                    <span id="pendentesCount" class="text-lg font-bold text-amber-400">0</span>
+                </div>
+                <div class="h-8 w-px bg-slate-700"></div>
+                <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition">
+                    <i data-lucide="download" class="w-4 h-4"></i> Exportar
+                </button>
+            </div>
+        </div>
+    </header>
 
-    <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+    <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
 
-        <!-- Passo 1: Importar Arquivo -->
-        <section id="importSection" class="bg-slate-800 rounded-2xl border border-slate-700 p-6 md:p-8 text-center">
-            <div class="max-w-xl mx-auto space-y-4">
-                <div class="w-16 h-16 bg-slate-700 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <i data-lucide="file-up" class="w-8 h-8"></i>
-                </div>
-                <h2 class="text-xl font-bold">Importe sua Planilha do ML ou Shopee</h2>
-                <p class="text-sm text-slate-400">Selecione o arquivo Excel (.xlsx, .xls) ou CSV exportado da plataforma para iniciar a bipagem.</p>
-                
-                <label class="block cursor-pointer">
-                    <span class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-3 rounded-xl inline-flex items-center gap-2 shadow-lg transition">
-                        <i data-lucide="upload" class="w-5 h-5"></i> Selecionar Planilha
-                    </span>
-                    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
-                </label>
-            </div>
-        </section>
+        <!-- Passo 1: Importar Arquivo -->
+        <section id="importSection" class="bg-slate-800 rounded-2xl border border-slate-700 p-6 md:p-8 text-center">
+            <div class="max-w-xl mx-auto space-y-4">
+                <div class="w-16 h-16 bg-slate-700 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <i data-lucide="file-up" class="w-8 h-8"></i>
+                </div>
+                <h2 class="text-xl font-bold">Importe sua Planilha do ML ou Shopee</h2>
+                <p class="text-sm text-slate-400">Selecione o arquivo Excel (.xlsx, .xls) ou CSV exportado da plataforma para iniciar a bipagem.</p>
+                
+                <label class="block cursor-pointer">
+                    <span class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-3 rounded-xl inline-flex items-center gap-2 shadow-lg transition">
+                        <i data-lucide="upload" class="w-5 h-5"></i> Selecionar Planilha
+                    </span>
+                    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
+                </label>
+            </div>
+        </section>
 
-        <!-- Configuração de Coluna (Oculto inicialmente) -->
-        <section id="columnConfigSection" class="hidden bg-slate-800 rounded-2xl border border-slate-700 p-6">
-            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                <i data-lucide="settings" class="w-5 h-5 text-blue-400"></i> Mapeamento da Planilha
-            </h3>
-            <div class="grid md:grid-cols-2 gap-4 items-end">
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-2">Selecione a coluna que contém os Códigos/Etiquetas:</label>
-                    <select id="columnSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500">
-                    </select>
-                </div>
-                <button id="btnStartScan" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 transition">
-                    <i data-lucide="play" class="w-5 h-5"></i> Iniciar Conferência
-                </button>
-            </div>
-        </section>
+        <!-- Configuração de Coluna (Oculto inicialmente) -->
+        <section id="columnConfigSection" class="hidden bg-slate-800 rounded-2xl border border-slate-700 p-6">
+            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                <i data-lucide="settings" class="w-5 h-5 text-blue-400"></i> Mapeamento da Planilha
+            </h3>
+            <div class="grid md:grid-cols-2 gap-4 items-end">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Selecione a coluna que contém os Códigos/Etiquetas:</label>
+                    <select id="columnSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500">
+                    </select>
+                </div>
+                <button id="btnStartScan" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 transition">
+                    <i data-lucide="play" class="w-5 h-5"></i> Iniciar Conferência
+                </button>
+            </div>
+        </section>
 
-        <!-- Passo 2: Campo de Bipagem e Filtros -->
-        <div id="scanWorkflow" class="hidden space-y-6">
-            <!-- Campo Principal de Bipagem -->
-            <section class="bg-slate-800 rounded-2xl border-2 border-blue-500 p-6 scan-pulse shadow-xl">
-                <div class="flex flex-col md:flex-row items-center gap-4">
-                    <div class="relative flex-1 w-full">
-                        <i data-lucide="scan-barcode" class="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                        <input type="text" id="barcodeInput" placeholder="Bipe o código de barras ou digite o rastreio aqui..." autocomplete="off" autofocus class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-slate-500 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20">
-                    </div>
-                    <div id="lastScanFeedback" class="w-full md:w-auto min-w-[220px] px-4 py-3 rounded-xl border border-slate-700 bg-slate-900 text-center text-sm font-semibold text-slate-400">
-                        Aguardando primeira leitura...
-                    </div>
-                </div>
-            </section>
+        <!-- Passo 2: Campo de Bipagem e Filtros -->
+        <div id="scanWorkflow" class="hidden space-y-6">
+            <!-- Campo Principal de Bipagem -->
+            <section class="bg-slate-800 rounded-2xl border-2 border-blue-500 p-6 scan-pulse shadow-xl">
+                <div class="flex flex-col md:flex-row items-center gap-4">
+                    <div class="relative flex-1 w-full">
+                        <i data-lucide="scan-barcode" class="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="barcodeInput" placeholder="Bipe o código de barras ou digite o rastreio aqui..." autocomplete="off" autofocus class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-slate-500 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20">
+                    </div>
+                    <div id="lastScanFeedback" class="w-full md:w-auto min-w-[220px] px-4 py-3 rounded-xl border border-slate-700 bg-slate-900 text-center text-sm font-semibold text-slate-400">
+                        Aguardando primeira leitura...
+                    </div>
+                </div>
+            </section>
 
-            <!-- Tabela de Itens -->
-            <section class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-                <div class="p-4 border-b border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <h3 class="font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="list" class="w-5 h-5 text-blue-400"></i> Lista de Encomendas
-                    </h3>
-                    <div class="flex gap-2">
-                        <button class="filter-btn active bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium" data-filter="all">Todos</button>
-                        <button class="filter-btn bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-slate-600" data-filter="pending">Pendentes</button>
-                        <button class="filter-btn bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-slate-600" data-filter="checked">Conferidos</button>
-                    </div>
-                </div>
+            <!-- Tabela de Itens -->
+            <section class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+                <div class="p-4 border-b border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <h3 class="font-semibold text-slate-200 flex items-center gap-2">
+                        <i data-lucide="list" class="w-5 h-5 text-blue-400"></i> Lista de Encomendas
+                    </h3>
+                    <div class="flex gap-2">
+                        <button class="filter-btn active bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium" data-filter="all">Todos</button>
+                        <button class="filter-btn bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-slate-600" data-filter="pending">Pendentes</button>
+                        <button class="filter-btn bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-slate-600" data-filter="checked">Conferidos</button>
+                    </div>
+                </div>
 
-                <div class="overflow-x-auto max-h-[500px]">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[11px] tracking-wider sticky top-0 backdrop-blur-sm">
-                            <tr>
-                                <th class="p-3.5">Status</th>
-                                <th class="p-3.5">Código / Rastreio</th>
-                                <th class="p-3.5">Detalhes / Dados</th>
-                                <th class="p-3.5 text-right">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody" class="divide-y divide-slate-700/50">
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-        </div>
+                <div class="overflow-x-auto max-h-[500px]">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[11px] tracking-wider sticky top-0 backdrop-blur-sm">
+                            <tr>
+                                <th class="p-3.5">Status</th>
+                                <th class="p-3.5">Código / Rastreio</th>
+                                <th class="p-3.5">Detalhes / Dados</th>
+                                <th class="p-3.5 text-right">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-700/50">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
 
-    </main>
+    </main>
 
-    <script>
-        // Inicializar Lucide Icons
-        lucide.createIcons();
+    <script>
+        lucide.createIcons();
 
-        // Áudio Web API para bipes sem dependência externa
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playBeep(freq = 880, type = 'sine', duration = 0.15) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = type;
-            osc.frequency.value = freq;
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
-            osc.stop(audioCtx.currentTime + duration);
-        }
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playBeep(freq = 880, type = 'sine', duration = 0.15) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+            osc.stop(audioCtx.currentTime + duration);
+        }
 
-        function playSuccessSound() {
-            playBeep(880, 'sine', 0.12);
-            setTimeout(() => playBeep(1320, 'sine', 0.15), 100);
-        }
+        function playSuccessSound() {
+            playBeep(880, 'sine', 0.12);
+            setTimeout(() => playBeep(1320, 'sine', 0.15), 100);
+        }
 
-        function playErrorSound() {
-            playBeep(220, 'sawtooth', 0.25);
-            setTimeout(() => playBeep(180, 'sawtooth', 0.3), 200);
-        }
+        function playErrorSound() {
+            playBeep(220, 'sawtooth', 0.25);
+            setTimeout(() => playBeep(180, 'sawtooth', 0.3), 200);
+        }
 
-        // Estado da Aplicação
-        let excelData = [];
-        let labelColumn = '';
-        let currentFilter = 'all';
+        let excelData = [];
+        let labelColumn = '';
+        let currentFilter = 'all';
 
-        // Elementos DOM
-        const fileInput = document.getElementById('fileInput');
-        const importSection = document.getElementById('importSection');
-        const columnConfigSection = document.getElementById('columnConfigSection');
-        const columnSelect = document.getElementById('columnSelect');
-        const btnStartScan = document.getElementById('btnStartScan');
-        const scanWorkflow = document.getElementById('scanWorkflow');
-        const barcodeInput = document.getElementById('barcodeInput');
-        const tableBody = document.getElementById('tableBody');
-        const statsBar = document.getElementById('statsBar');
-        const lastScanFeedback = document.getElementById('lastScanFeedback');
+        const fileInput = document.getElementById('fileInput');
+        const importSection = document.getElementById('importSection');
+        const columnConfigSection = document.getElementById('columnConfigSection');
+        const columnSelect = document.getElementById('columnSelect');
+        const btnStartScan = document.getElementById('btnStartScan');
+        const scanWorkflow = document.getElementById('scanWorkflow');
+        const barcodeInput = document.getElementById('barcodeInput');
+        const tableBody = document.getElementById('tableBody');
+        const statsBar = document.getElementById('statsBar');
+        const lastScanFeedback = document.getElementById('lastScanFeedback');
 
-        // Ler arquivo Excel / CSV
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-            const reader = new FileReader();
-            reader.onload = (evt) => {
-                const bstr = evt.target.result;
-                const workbook = XLSX.read(bstr, { type: 'binary' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                
-                // Converter planilha para objetos JSON
-                excelData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const bstr = evt.target.result;
+                const workbook = XLSX.read(bstr, { type: 'binary' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                excelData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-                if (excelData.length === 0) {
-                    alert("A planilha parece estar vazia!");
-                    return;
-                }
+                if (excelData.length === 0) {
+                    alert("A planilha parece estar vazia!");
+                    return;
+                }
 
-                // Adicionar campo de status de conferência
-                excelData.forEach(row => row._statusConferencia = 'Pendente');
+                excelData.forEach(row => row._statusConferencia = 'Pendente');
 
-                // Preencher colunas no select
-                const columns = Object.keys(excelData[0]);
-                columnSelect.innerHTML = '';
-                
-                // Tentar pré-selecionar coluna provável (Código de rastreio, Etiqueta, Pacote)
-                let autoSelected = false;
-                columns.forEach(col => {
-                    const option = document.createElement('option');
-                    option.value = col;
-                    option.textContent = col;
-                    
-                    const lower = col.toLowerCase();
-                    if (!autoSelected && (lower.includes('código') || lower.includes('rastreio') || lower.includes('etiqueta') || lower.includes('tracking') || lower.includes('shipping'))) {
-                        option.selected = true;
-                        autoSelected = true;
-                    }
-                    columnSelect.appendChild(option);
-                });
+                const columns = Object.keys(excelData[0]);
+                columnSelect.innerHTML = '';
+                
+                let autoSelected = false;
+                columns.forEach(col => {
+                    const option = document.createElement('option');
+                    option.value = col;
+                    option.textContent = col;
+                    
+                    const lower = col.toLowerCase();
+                    if (!autoSelected && (lower.includes('código') || lower.includes('rastreio') || lower.includes('etiqueta') || lower.includes('tracking') || lower.includes('shipping') || lower.includes('envio'))) {
+                        option.selected = true;
+                        autoSelected = true;
+                    }
+                    columnSelect.appendChild(option);
+                });
 
-                columnConfigSection.classList.remove('hidden');
-            };
-            reader.readAsBinaryString(file);
-        });
+                importSection.classList.add('hidden');
+                columnConfigSection.classList.remove('hidden');
+            };
+            reader.readAsBinaryString(file);
+        });
 
-        // Iniciar Varredura
-        btnStartScan.addEventListener('click', () => {
-            labelColumn = columnSelect.value;
-            if (!labelColumn) return;
+        btnStartScan.addEventListener('click', () => {
+            labelColumn = columnSelect.value;
+            if (!labelColumn) return;
 
-            importSection.classList.add('hidden');
-            columnConfigSection.classList.add('hidden');
-            scanWorkflow.classList.remove('hidden');
-            statsBar.classList.remove('hidden');
+            columnConfigSection.classList.add('hidden');
+            scanWorkflow.classList.remove('hidden');
+            statsBar.classList.remove('hidden');
 
-            renderTable();
-            updateStats();
-            barcodeInput.focus();
-        });
+            renderTable();
+            updateStats();
+            barcodeInput.focus();
+        });
 
-        // Manter o foco no input de bipagem
-        document.addEventListener('click', (e) => {
-            if (!scanWorkflow.classList.contains('hidden') && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
-                barcodeInput.focus();
-            }
-        });
+        document.addEventListener('click', (e) => {
+            if (!scanWorkflow.classList.contains('hidden') && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+                barcodeInput.focus();
+            }
+        });
 
-        // Bipagem / Entrada do leitor
-        barcodeInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const val = barcodeInput.value.trim();
-                barcodeInput.value = '';
-                if (!val) return;
+        barcodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const val = barcodeInput.value.trim();
+                barcodeInput.value = '';
+                if (!val) return;
 
-                processBarcode(val);
-            }
-        });
+                processBarcode(val);
+            }
+        });
 
-        function processBarcode(code) {
-            // Busca exata ou por trecho no código da etiqueta
-            const foundItem = excelData.find(item => {
-                const itemCode = String(item[labelColumn] || '').trim();
-                return itemCode === code || itemCode.toLowerCase() === code.toLowerCase();
-            });
+        function processBarcode(code) {
+            const foundItem = excelData.find(item => {
+                const itemCode = String(item[labelColumn] || '').trim();
+                return itemCode === code || itemCode.toLowerCase() === code.toLowerCase();
+            });
 
-            if (foundItem) {
-                if (foundItem._statusConferencia === 'Conferido') {
-                    playErrorSound();
-                    setFeedback(Atenção: Código "${code}" já foi conferido!, 'amber');
-                } else {
-                    foundItem._statusConferencia = 'Conferido';
-                    playSuccessSound();
-                    setFeedback(OK: Código "${code}" conferido com sucesso!, 'emerald');
-                }
-            } else {
-                playErrorSound();
-                setFeedback(ERRO: Código "${code}" não encontrado na planilha!, 'red');
-            }
+            if (foundItem) {
+                if (foundItem._statusConferencia === 'Conferido') {
+                    playErrorSound();
+                    setFeedback(`Atenção: Código "${code}" já foi conferido!`, 'amber');
+                } else {
+                    foundItem._statusConferencia = 'Conferido';
+                    playSuccessSound();
+                    setFeedback(`OK: Código "${code}" conferido com sucesso!`, 'emerald');
+                }
+            } else {
+                playErrorSound();
+                setFeedback(`ERRO: Código "${code}" não encontrado na planilha!`, 'red');
+            }
 
-            renderTable();
-            updateStats();
-        }
+            renderTable();
+            updateStats();
+        }
 
-        function setFeedback(msg, color) {
-            lastScanFeedback.textContent = msg;
-            lastScanFeedback.className = w-full md:w-auto min-w-[220px] px-4 py-3 rounded-xl border text-center text-sm font-semibold transition-all duration-200;
-            
-            if (color === 'emerald') {
-                lastScanFeedback.classList.add('bg-emerald-950/60', 'border-emerald-500', 'text-emerald-400');
-            } else if (color === 'amber') {
-                lastScanFeedback.classList.add('bg-amber-950/60', 'border-amber-500', 'text-amber-400');
-            } else if (color === 'red') {
-                lastScanFeedback.classList.add('bg-red-950/60', 'border-red-500', 'text-red-400');
-            }
-        }
+        function setFeedback(msg, color) {
+            lastScanFeedback.textContent = msg;
+            lastScanFeedback.className = "w-full md:w-auto min-w-[220px] px-4 py-3 rounded-xl border text-center text-sm font-semibold transition-all duration-200";
+            
+            if (color === 'emerald') {
+                lastScanFeedback.classList.add('bg-emerald-950/60', 'border-emerald-500', 'text-emerald-400');
+            } else if (color === 'amber') {
+                lastScanFeedback.classList.add('bg-amber-950/60', 'border-amber-500', 'text-amber-400');
+            } else if (color === 'red') {
+                lastScanFeedback.classList.add('bg-red-950/60', 'border-red-500', 'text-red-400');
+            }
+        }
 
-        function renderTable() {
-            tableBody.innerHTML = '';
+        function renderTable() {
+            tableBody.innerHTML = '';
 
-            const filteredData = excelData.filter(item => {
-                if (currentFilter === 'pending') return item._statusConferencia === 'Pendente';
-                if (currentFilter === 'checked') return item._statusConferencia === 'Conferido';
-                return true;
-            });
+            const filteredData = excelData.filter(item => {
+                if (currentFilter === 'pending') return item._statusConferencia === 'Pendente';
+                if (currentFilter === 'checked') return item._statusConferencia === 'Conferido';
+                return true;
+            });
 
-            filteredData.forEach((item, idx) => {
-                const tr = document.createElement('tr');
-                const isConferido = item._statusConferencia === 'Conferido';
+            filteredData.forEach((item) => {
+                const tr = document.createElement('tr');
+                const isConferido = item._statusConferencia === 'Conferido';
 
-                tr.className = isConferido 
-                    ? 'bg-emerald-950/20 hover:bg-emerald-900/30 transition-colors' 
-                    : 'hover:bg-slate-700/30 transition-colors';
+                tr.className = isConferido 
+                    ? 'bg-emerald-950/20 hover:bg-emerald-900/30 transition-colors' 
+                    : 'hover:bg-slate-700/30 transition-colors';
 
-                // Criar resumo dos outros dados da linha
-                const extraDetails = Object.keys(item)
-                    .filter(k => k !== labelColumn && k !== '_statusConferencia')
-                    .slice(0, 2)
-                    .map(k => <span class="text-xs text-slate-400">${k}: <strong class="text-slate-300">${item[k]}</strong></span>)
-                    .join(' | ');
+                const keys = Object.keys(item).filter(k => k !== labelColumn && k !== '_statusConferencia');
+                const extraDetails = keys.slice(0, 2).map(k => `<span class="text-xs text-slate-400">${k}: <strong class="text-slate-300">${item[k]}</strong></span>`).join(' | ');
 
-                tr.innerHTML = `
-                    <td class="p-3.5">
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${isConferido ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
-                            <i data-lucide="${isConferido ? 'check-circle-2' : 'clock'}" class="w-3.5 h-3.5"></i>
-                            ${item._statusConferencia}
-                        </span>
-                    </td>
-                    <td class="p-3.5 font-mono font-medium text-slate-200">
-                        ${item[labelColumn] || '-'}
-                    </td>
-                    <td class="p-3.5">
-                        ${extraDetails || '<span class="text-slate-500 text-xs">Sem detalhes adicionais</span>'}
-                    </td>
-                    <td class="p-3.5 text-right">
-                        <button onclick="toggleManualCheck('${item[labelColumn]}')" class="text-xs text-slate-400 hover:text-white bg-slate-700/50 hover:bg-slate-700 px-2 py-1 rounded border border-slate-600 transition">
-                            Alternar
-                        </button>
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-            });
+                tr.innerHTML = `
+                    <td class="p-3.5">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${isConferido ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
+                            <i data-lucide="${isConferido ? 'check-circle-2' : 'clock'}" class="w-3.5 h-3.5"></i>
+                            ${item._statusConferencia}
+                        </span>
+                    </td>
+                    <td class="p-3.5 font-mono font-medium text-slate-200">
+                        ${item[labelColumn] || '-'}
+                    </td>
+                    <td class="p-3.5">
+                        ${extraDetails || '<span class="text-slate-500 text-xs">Sem detalhes adicionais</span>'}
+                    </td>
+                    <td class="p-3.5 text-right">
+                        <button onclick="toggleManualCheck('${item[labelColumn]}')" class="text-xs text-slate-400 hover:text-white bg-slate-700/50 hover:bg-slate-700 px-2 py-1 rounded border border-slate-600 transition">
+                            Alternar
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
 
-            lucide.createIcons();
-        }
+            lucide.createIcons();
+        }
 
-        window.toggleManualCheck = function(code) {
-            const item = excelData.find(i => String(i[labelColumn]).trim() === String(code).trim());
-            if (item) {
-                item._statusConferencia = item._statusConferencia === 'Conferido' ? 'Pendente' : 'Conferido';
-                renderTable();
-                updateStats();
-            }
-        };
+        window.toggleManualCheck = function(code) {
+            const item = excelData.find(i => String(i[labelColumn]).trim() === String(code).trim());
+            if (item) {
+                item._statusConferencia = item._statusConferencia === 'Conferido' ? 'Pendente' : 'Conferido';
+                renderTable();
+                updateStats();
+            }
+        };
 
-        function updateStats() {
-            const total = excelData.length;
-            const conferidos = excelData.filter(i => i._statusConferencia === 'Conferido').length;
-            const pendentes = total - conferidos;
+        function updateStats() {
+            const total = excelData.length;
+            const conferidos = excelData.filter(i => i._statusConferencia === 'Conferido').length;
+            const pendentes = total - conferidos;
 
-            document.getElementById('totalCount').textContent = total;
-            document.getElementById('conferidosCount').textContent = conferidos;
-            document.getElementById('pendentesCount').textContent = pendentes;
-        }
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('conferidosCount').textContent = conferidos;
+            document.getElementById('pendentesCount').textContent = pendentes;
+        }
 
-        // Filtros
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.filter-btn').forEach(b => {
-                    b.classList.remove('bg-blue-600', 'text-white');
-                    b.classList.add('bg-slate-700', 'text-slate-300');
-                });
-                e.target.classList.remove('bg-slate-700', 'text-slate-300');
-                e.target.classList.add('bg-blue-600', 'text-white');
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => {
+                    b.classList.remove('bg-blue-600', 'text-white');
+                    b.classList.add('bg-slate-700', 'text-slate-300');
+                });
+                e.target.classList.remove('bg-slate-700', 'text-slate-300');
+                e.target.classList.add('bg-blue-600', 'text-white');
 
-                currentFilter = e.target.dataset.filter;
-                renderTable();
-            });
-        });
+                currentFilter = e.target.dataset.filter;
+                renderTable();
+            });
+        });
 
-        // Exportar resultado para Excel
-        document.getElementById('btnExport').addEventListener('click', () => {
-            const exportData = excelData.map(row => {
-                const newRow = { ...row };
-                newRow['Status Conferência'] = newRow._statusConferencia;
-                delete newRow._statusConferencia;
-                return newRow;
-            });
+        document.getElementById('btnExport').addEventListener('click', () => {
+            const exportData = excelData.map(row => {
+                const newRow = { ...row };
+                newRow['Status Conferência'] = newRow._statusConferencia;
+                delete newRow._statusConferencia;
+                return newRow;
+            });
 
-            const worksheet = XLSX.utils.json_to_sheet(exportData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
-            XLSX.writeFile(workbook, Conferencia_Etiquetas_${new Date().toISOString().slice(0,10)}.xlsx);
-        });
-    </script>
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
+            XLSX.writeFile(workbook, `Conferencia_Etiquetas_${new Date().toISOString().slice(0,10)}.xlsx`);
+        });
+    </script>
 </body>
 </html>
