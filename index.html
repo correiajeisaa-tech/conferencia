@@ -41,7 +41,7 @@
                 </div>
             </div>
 
-            <!-- Placar de Status & Sala Ativa -->
+            <!-- Placar de Status & Sala Ativa (Sempre Visível após entrar) -->
             <div id="statsBar" class="hidden flex items-center gap-3 bg-zinc-950 px-4 py-2 rounded-2xl border border-zinc-800 shadow-inner">
                 <span id="roomBadge" class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2.5 py-1 rounded-xl font-mono font-bold">Sala: -</span>
                 <div class="h-6 w-px bg-zinc-800"></div>
@@ -60,8 +60,8 @@
                 <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md ml-2">
                     <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar
                 </button>
-                <button id="btnChangeRoom" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs px-2.5 py-2 rounded-xl transition" title="Mudar de Sala">
-                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                <button id="btnChangeRoom" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs px-3 py-2 rounded-xl transition flex items-center gap-1 font-semibold" title="Voltar e Mudar de Sala">
+                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Sair
                 </button>
             </div>
         </div>
@@ -86,9 +86,15 @@
             </div>
         </section>
 
-        <!-- Passo 1: Importar Arquivo -->
+        <!-- Passo 1: Importar Arquivo (Se a sala estiver vazia) -->
         <section id="importSection" class="hidden bg-zinc-900 rounded-3xl border border-zinc-800 p-8 text-center shadow-xl">
             <div class="max-w-xl mx-auto space-y-4">
+                <div class="flex justify-between items-center mb-4 pb-3 border-b border-zinc-800">
+                    <span id="roomBadgeImport" class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1.5 rounded-xl font-mono font-bold">Sala: -</span>
+                    <button onclick="voltarParaSala()" class="text-xs text-zinc-400 hover:text-white bg-zinc-800 px-3 py-1.5 rounded-xl transition flex items-center gap-1 font-semibold">
+                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Trocar Sala
+                    </button>
+                </div>
                 <div class="w-16 h-16 bg-zinc-800 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner">
                     <i data-lucide="file-spreadsheet" class="w-8 h-8"></i>
                 </div>
@@ -201,6 +207,7 @@
         const btnJoinRoom = document.getElementById('btnJoinRoom');
         const btnChangeRoom = document.getElementById('btnChangeRoom');
         const roomBadge = document.getElementById('roomBadge');
+        const roomBadgeImport = document.getElementById('roomBadgeImport');
         const fileInput = document.getElementById('fileInput');
         const barcodeInput = document.getElementById('barcodeInput');
         const tableBody = document.getElementById('tableBody');
@@ -211,10 +218,10 @@
         const lastScanQtyInfo = document.getElementById('lastScanQtyInfo');
 
         window.addEventListener('DOMContentLoaded', () => {
-            const savedRoom = localStorage.getItem('scancheck_room');
-            if (savedRoom) {
-                roomInput.value = savedRoom;
-            }
+            roomSection.classList.remove('hidden');
+            importSection.classList.add('hidden');
+            scanWorkflow.classList.add('hidden');
+            statsBar.classList.add('hidden');
         });
 
         btnJoinRoom.addEventListener('click', () => {
@@ -224,21 +231,24 @@
                 return;
             }
             currentRoom = room;
-            localStorage.setItem('scancheck_room', room);
             roomBadge.textContent = `Sala: ${room}`;
+            roomBadgeImport.textContent = `Sala: ${room}`;
 
             roomSection.classList.add('hidden');
             listenToRoom(room);
         });
 
-        btnChangeRoom.addEventListener('click', () => {
+        window.voltarParaSala = function() {
             if (unsubscribeFirestore) unsubscribeFirestore();
-            localStorage.removeItem('scancheck_room');
             scanWorkflow.classList.add('hidden');
             importSection.classList.add('hidden');
             statsBar.classList.add('hidden');
             roomSection.classList.remove('hidden');
-        });
+            roomInput.value = '';
+            roomInput.focus();
+        };
+
+        btnChangeRoom.addEventListener('click', voltarParaSala);
 
         function listenToRoom(room) {
             if (unsubscribeFirestore) unsubscribeFirestore();
@@ -249,6 +259,7 @@
                     excelData = data.items || [];
 
                     if (excelData.length > 0) {
+                        roomSection.classList.add('hidden');
                         importSection.classList.add('hidden');
                         scanWorkflow.classList.remove('hidden');
                         statsBar.classList.remove('hidden');
@@ -256,12 +267,14 @@
                         updateStats();
                         barcodeInput.focus();
                     } else {
+                        roomSection.classList.add('hidden');
                         scanWorkflow.classList.add('hidden');
                         statsBar.classList.add('hidden');
                         importSection.classList.remove('hidden');
                     }
                 } else {
                     db.collection('salas').doc(room).set({ items: [] }).catch(e => console.log(e));
+                    roomSection.classList.add('hidden');
                     scanWorkflow.classList.add('hidden');
                     statsBar.classList.add('hidden');
                     importSection.classList.remove('hidden');
