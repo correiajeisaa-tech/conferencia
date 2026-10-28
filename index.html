@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ScanCheck - Conferência de Encomendas</title>
+    <!-- Configuração de Atalho e Logo PWA para o Coletor -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f97316' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 7V5a2 2 0 0 1 2-2h2'/><path d='M17 3h2a2 2 0 0 1 2 2v2'/><path d='M21 17v2a2 2 0 0 1-2 2h-2'/><path d='M7 21H5a2 2 0 0 1-2-2v-2'/><path d='M7 8h10'/><path d='M7 12h10'/><path d='M7 16h10'/></svg>">
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS para ler e exportar arquivos Excel/CSV -->
@@ -239,10 +242,10 @@
                 return;
             }
             currentRoom = room;
-            roomBadge.textContent = `Sala: ${room}`; roomBadgeImport.textContent = `Sala: ${room}`;
+            roomBadge.textContent = `Sala: ${room}`;
+            roomBadgeImport.textContent = `Sala: ${room}`;
             roomStatusText.classList.remove('hidden');
 
-            // Busca direta e segura na nuvem antes de ativar o ouvinte
             try {
                 const docSnap = await db.collection('salas').doc(room).get();
                 if (docSnap.exists) {
@@ -295,7 +298,6 @@
                     const data = doc.data();
                     const newItems = data.items || [];
                     
-                    // Só atualiza se houver itens válidos salvos para evitar sobrescrever a tela
                     if (newItems.length > 0) {
                         excelData = newItems;
                         roomSection.classList.add('hidden');
@@ -474,7 +476,8 @@
         function setFeedback(code, message, color, product, qty) {
             lastScannedCodeText.textContent = code;
             lastScanStatusText.textContent = message;
-            lastScanProductInfo.textContent = `Produto: ${product}`; lastScanQtyInfo.textContent = `Quantidade: ${qty}`;
+            lastScanProductInfo.textContent = `Produto: ${product}`;
+            lastScanQtyInfo.textContent = `Quantidade: ${qty}`;
             
             lastScanFeedback.className = "w-full lg:w-[380px] px-4 py-3.5 rounded-2xl border text-left transition-all duration-200 shadow-inner";
             if (color === 'emerald') {
@@ -509,4 +512,72 @@
 
                 let statusBadge = '';
                 if (isCanceled) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20"><i data-lucide="ban" class="w-3.5 h-3.5"></i> Cancelado</span>`;
-                else if (isConferido) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/
+                else if (isConferido) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Pronto</span>`;
+                else statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Pendente</span>`;
+
+                tr.innerHTML = `
+                    <td class="p-4">${statusBadge}</td>
+                    <td class="p-4 font-mono font-bold text-orange-400">${item.code}</td>
+                    <td class="p-4 text-zinc-200 font-medium max-w-xs truncate" title="${item.product}">${item.product}</td>
+                    <td class="p-4 font-bold text-amber-400">${item.qty}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="toggleManualCheck('${item.code}')" class="text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-xl border border-zinc-700 transition font-medium">
+                            Alternar
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        window.toggleManualCheck = function(code) {
+            const item = excelData.find(i => String(i.code).trim() === String(code).trim());
+            if (item) {
+                if (item.isCanceled) alert("Atenção: Este pedido está marcado como cancelado na planilha!");
+                item.status = item.status === 'Conferido' ? 'Pendente' : 'Conferido';
+                saveToCloud();
+                renderTable();
+                updateStats();
+            }
+        };
+
+        function updateStats() {
+            const total = excelData.length;
+            const conferidos = excelData.filter(i => !i.isCanceled && i.status === 'Conferido').length;
+            const cancelados = excelData.filter(i => i.isCanceled).length;
+            const pendentes = total - conferidos - cancelados;
+
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('conferidosCount').textContent = conferidos;
+            document.getElementById('pendentesCount').textContent = pendentes;
+        }
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => {
+                    b.classList.remove('bg-orange-600', 'text-white', 'shadow-sm');
+                    b.classList.add('bg-transparent', 'text-zinc-400');
+                });
+                e.target.classList.remove('bg-transparent', 'text-zinc-400');
+                e.target.classList.add('bg-orange-600', 'text-white', 'shadow-sm');
+                currentFilter = e.target.dataset.filter;
+                renderTable();
+            });
+        });
+
+        document.getElementById('btnExport').addEventListener('click', () => {
+            const exportData = excelData.map(row => ({
+                'Etiqueta / Rastreio': row.code,
+                'Produto': row.product,
+                'Quantidade': row.qty,
+                'Status Conferência': row.isCanceled ? 'CANCELADO' : row.status
+            }));
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
+            XLSX.writeFile(workbook, `ScanCheck_${new Date().toISOString().slice(0,10)}.xlsx`);
+        });
+    </script>
+</body>
+</html>
