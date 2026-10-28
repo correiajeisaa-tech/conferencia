@@ -77,21 +77,21 @@
                 <p class="text-xs text-slate-400 mt-1">Digite o mesmo nome de sala no computador e no coletor para sincronizar em tempo real.</p>
             </div>
             <div class="space-y-3">
-                <input type="text" id="roomInput" placeholder="Ex: expedicao01" autocomplete="off" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-center text-lg font-mono text-white placeholder-slate-600 focus:outline-none focus:border-blue-500">
+                <input type="text" id="roomInput" placeholder="Ex: 01" autocomplete="off" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-center text-lg font-mono text-white placeholder-slate-600 focus:outline-none focus:border-blue-500">
                 <button id="btnJoinRoom" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-xl transition shadow-lg flex items-center justify-center gap-2">
                     <i data-lucide="wifi" class="w-4 h-4"></i> Entrar na Sala
                 </button>
             </div>
         </section>
 
-        <!-- Passo 1: Importar Arquivo (Visível apenas se a sala não tiver dados) -->
+        <!-- Passo 1: Importar Arquivo -->
         <section id="importSection" class="hidden bg-slate-800 rounded-2xl border border-slate-700 p-6 md:p-8 text-center">
             <div class="max-w-xl mx-auto space-y-4">
                 <div class="w-16 h-16 bg-slate-700 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-2">
                     <i data-lucide="file-up" class="w-8 h-8"></i>
                 </div>
                 <h2 class="text-xl font-bold">Importe sua Planilha do ML ou Shopee</h2>
-                <p class="text-sm text-slate-400">Ao importar aqui, os dados serão enviados para a nuvem e sincronizados instantaneamente no coletor.</p>
+                <p class="text-sm text-slate-400">Ao importar aqui, os dados vão para a nuvem e aparecem instantaneamente no coletor.</p>
                 
                 <div class="pt-2">
                     <label for="fileInput" class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-3 rounded-xl inline-flex items-center gap-2 shadow-lg transition">
@@ -160,7 +160,6 @@
     </main>
 
     <script>
-        // Configuração do Firebase
         const firebaseConfig = {
             projectId: "conferencia-expedicao-ml-shopee"
         };
@@ -209,7 +208,6 @@
         const lastScanProductInfo = document.getElementById('lastScanProductInfo');
         const lastScanQtyInfo = document.getElementById('lastScanQtyInfo');
 
-        // Recuperar sala salva anteriormente
         window.addEventListener('DOMContentLoaded', () => {
             const savedRoom = localStorage.getItem('conferencia_room');
             if (savedRoom) {
@@ -261,12 +259,13 @@
                         importSection.classList.remove('hidden');
                     }
                 } else {
-                    // Sala vazia, cria documento inicial
-                    db.collection('salas').doc(room).set({ items: [] });
+                    db.collection('salas').doc(room).set({ items: [] }).catch(e => console.log(e));
                     scanWorkflow.classList.add('hidden');
                     statsBar.classList.add('hidden');
                     importSection.classList.remove('hidden');
                 }
+            }, (error) => {
+                console.error("Erro no Firestore:", error);
             });
         }
 
