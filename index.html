@@ -7,7 +7,7 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS para ler e exportar arquivos Excel/CSV -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -86,12 +86,12 @@
                 <h2 class="text-xl font-bold">Importe sua Planilha do ML ou Shopee</h2>
                 <p class="text-sm text-slate-400">Selecione o arquivo Excel (.xlsx, .xls) ou CSV exportado da plataforma para iniciar a bipagem.</p>
                 
-                <label class="block cursor-pointer">
-                    <span class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-3 rounded-xl inline-flex items-center gap-2 shadow-lg transition">
+                <div class="pt-2">
+                    <label for="fileInput" class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-3 rounded-xl inline-flex items-center gap-2 shadow-lg transition">
                         <i data-lucide="upload" class="w-5 h-5"></i> Selecionar Planilha
-                    </span>
+                    </label>
                     <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
-                </label>
+                </div>
             </div>
         </section>
 
@@ -140,7 +140,7 @@
                         <i data-lucide="scan-barcode" class="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
                         <input type="text" id="barcodeInput" placeholder="Bipe o código de barras ou digite o rastreio aqui..." autocomplete="off" autofocus class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-slate-500 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20">
                     </div>
-                    <!-- Destaque do Último Bipado com Produto, Qtd e Status -->
+                    <!-- Destaque do Último Bipado -->
                     <div id="lastScanFeedback" class="w-full lg:w-[350px] px-4 py-3 rounded-xl border border-slate-700 bg-slate-900 text-left">
                         <div class="flex justify-between items-center border-b border-slate-800 pb-1 mb-1">
                             <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Último Bipado</span>
@@ -313,75 +313,115 @@
 
             const reader = new FileReader();
             reader.onload = (evt) => {
-                const bstr = evt.target.result;
-                const workbook = XLSX.read(bstr, { type: 'binary' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                
-                excelData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-
-                if (excelData.length === 0) {
-                    alert("A planilha parece estar vazia!");
-                    return;
-                }
-
-                // Identifica se o pedido é cancelado na importação
-                excelData.forEach(row => {
-                    row._statusConferencia = 'Pendente';
-                    row._isCanceled = false;
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
                     
-                    // Procura termos de cancelamento em todas as colunas caso o status não seja mapeado diretamente
-                    for (let key in row) {
-                        const valStr = String(row[key] || '').toLowerCase();
-                        if (valStr.includes('cancelado') || valStr.includes('cancelada') || valStr.includes('canceled')) {
-                            row._isCanceled = true;
+                    // Converte ignorando as primeiras linhas de cabeçalho descritivo (procura automaticamente onde começa a tabela real)
+                    const rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+
+                    if (!rawJson || rawJson.length === 0) {
+                        alert("A planilha parece estar vazia!");
+                        return;
+                    }
+
+                    // Acha a linha de cabeçalho real (linha que contém palavras-chave como 'rastreio', 'código', 'envio' ou 'MEL')
+                    let headerRowIndex = 0;
+                    for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
+                        const rowStr = JSON.stringify(rawJson[i]).toLowerCase();
+                        if (rowStr.includes('rastreio') || rowStr.includes('código') || rowStr.includes('codigo') || rowStr.includes('mel') || rowStr.includes('shipping') || rowStr.includes('tracking')) {
+                            headerRowIndex = i;
                             break;
                         }
                     }
-                });
 
-                const columns = Object.keys(excelData[0]);
-                columnSelect.innerHTML = '';
-                productColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
-                qtyColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
-                statusColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
-                
-                let autoSelectedLabel = false;
-                let autoSelectedProduct = false;
-                let autoSelectedQty = false;
-                let autoSelectedStatus = false;
+                    // Reconstrói os dados limpos a partir da linha correta do cabeçalho
+                    const headers = rawJson[headerRowIndex];
+                    excelData = [];
 
-                columns.forEach(col => {
-                    const opt1 = document.createElement('option'); opt1.value = col; opt1.textContent = col;
-                    const opt2 = document.createElement('option'); opt2.value = col; opt2.textContent = col;
-                    const opt3 = document.createElement('option'); opt3.value = col; opt3.textContent = col;
-                    const opt4 = document.createElement('option'); opt4.value = col; opt4.textContent = col;
+                    for (let i = headerRowIndex + 1; i < rawJson.length; i++) {
+                        const rowCols = rawJson[i];
+                        // Ignora linhas totalmente vazias
+                        if (!rowCols || rowCols.every(cell => String(cell).trim() === "")) continue;
+
+                        let rowObj = {};
+                        let hasVal = false;
+                        headers.forEach((h, colIdx) => {
+                            const colName = h ? String(h).trim() : `Coluna_${colIdx}`;
+                            const val = rowCols[colIdx] !== undefined ? rowCols[colIdx] : "";
+                            rowObj[colName] = val;
+                            if (String(val).trim() !== "") hasVal = true;
+                        });
+
+                        if (hasVal) {
+                            rowObj._statusConferencia = 'Pendente';
+                            rowObj._isCanceled = false;
+
+                            // Verifica cancelamento
+                            for (let key in rowObj) {
+                                const valStr = String(rowObj[key] || '').toLowerCase();
+                                if (valStr.includes('cancelado') || valStr.includes('cancelada') || valStr.includes('canceled')) {
+                                    rowObj._isCanceled = true;
+                                    break;
+                                }
+                            }
+                            excelData.push(rowObj);
+                        }
+                    }
+
+                    if (excelData.length === 0) {
+                        alert("Não foi possível encontrar dados válidos após o cabeçalho da planilha.");
+                        return;
+                    }
+
+                    const columns = Object.keys(excelData[0]).filter(k => !k.startsWith('_'));
+                    columnSelect.innerHTML = '';
+                    productColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
+                    qtyColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
+                    statusColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
                     
-                    const lower = col.toLowerCase();
-                    
-                    if (!autoSelectedLabel && (lower.includes('código') || lower.includes('rastreio') || lower.includes('etiqueta') || lower.includes('tracking') || lower.includes('shipping') || lower.includes('envio') || lower.includes('au'))) {
-                        opt1.selected = true; autoSelectedLabel = true;
-                    }
-                    if (!autoSelectedProduct && (lower.includes('produto') || lower.includes('descrição') || lower.includes('titulo') || lower.includes('item'))) {
-                        opt2.selected = true; autoSelectedProduct = true;
-                    }
-                    if (!autoSelectedQty && (lower.includes('qtd') || lower.includes('quantidade') || lower.includes('unidades'))) {
-                        opt3.selected = true; autoSelectedQty = true;
-                    }
-                    if (!autoSelectedStatus && (lower.includes('status') || lower.includes('situação') || lower.includes('estado') || lower.includes('cancelado'))) {
-                        opt4.selected = true; autoSelectedStatus = true;
-                    }
+                    let autoSelectedLabel = false;
+                    let autoSelectedProduct = false;
+                    let autoSelectedQty = false;
+                    let autoSelectedStatus = false;
 
-                    columnSelect.appendChild(opt1);
-                    productColumnSelect.appendChild(opt2);
-                    qtyColumnSelect.appendChild(opt3);
-                    statusColumnSelect.appendChild(opt4);
-                });
+                    columns.forEach(col => {
+                        const opt1 = document.createElement('option'); opt1.value = col; opt1.textContent = col;
+                        const opt2 = document.createElement('option'); opt2.value = col; opt2.textContent = col;
+                        const opt3 = document.createElement('option'); opt3.value = col; opt3.textContent = col;
+                        const opt4 = document.createElement('option'); opt4.value = col; opt4.textContent = col;
+                        
+                        const lower = col.toLowerCase();
+                        
+                        if (!autoSelectedLabel && (lower.includes('código') || lower.includes('codigo') || lower.includes('rastreio') || lower.includes('etiqueta') || lower.includes('tracking') || lower.includes('shipping') || lower.includes('envio') || lower.includes('au'))) {
+                            opt1.selected = true; autoSelectedLabel = true;
+                        }
+                        if (!autoSelectedProduct && (lower.includes('produto') || lower.includes('descrição') || lower.includes('descricao') || lower.includes('titulo') || lower.includes('item'))) {
+                            opt2.selected = true; autoSelectedProduct = true;
+                        }
+                        if (!autoSelectedQty && (lower.includes('qtd') || lower.includes('quantidade') || lower.includes('unidades'))) {
+                            opt3.selected = true; autoSelectedQty = true;
+                        }
+                        if (!autoSelectedStatus && (lower.includes('status') || lower.includes('situação') || lower.includes('situacao') || lower.includes('estado') || lower.includes('cancelado'))) {
+                            opt4.selected = true; autoSelectedStatus = true;
+                        }
 
-                importSection.classList.add('hidden');
-                columnConfigSection.classList.remove('hidden');
+                        columnSelect.appendChild(opt1);
+                        productColumnSelect.appendChild(opt2);
+                        qtyColumnSelect.appendChild(opt3);
+                        statusColumnSelect.appendChild(opt4);
+                    });
+
+                    importSection.classList.add('hidden');
+                    columnConfigSection.classList.remove('hidden');
+                } catch(err) {
+                    alert("Erro ao ler a planilha. Verifique se o arquivo não está corrompido.");
+                    console.error(err);
+                }
             };
-            reader.readAsBinaryString(file);
+            reader.readAsArrayBuffer(file);
         });
 
         btnStartScan.addEventListener('click', () => {
@@ -392,7 +432,6 @@
             
             if (!labelColumn) return;
 
-            // Se o usuário mapeou uma coluna de status específica, atualiza a marcação de cancelados com base nela
             if (statusColumn) {
                 excelData.forEach(row => {
                     const val = String(row[statusColumn] || '').toLowerCase();
@@ -443,16 +482,15 @@
                 const prodName = productColumn ? foundItem[productColumn] : 'Produto não mapeado';
                 const prodQty = qtyColumn ? foundItem[qtyColumn] : '1';
 
-                // ALERTA DE PEDIDO CANCELADO
                 if (foundItem._isCanceled) {
                     playCanceledSound();
-                    setFeedback(code, `❌ ALERTA: PEDIDO CANCELADO! NÃO ENVIAR!`, 'red', prodName, prodQty);
+                    setFeedback(code, `❌ ALERTA: PEDIDO CANCELADO!`, 'red', prodName, prodQty);
                     return;
                 }
 
                 if (matchingItems.length > 1) {
                     playErrorSound();
-                    setFeedback(code, `⚠️ ERRO: Etiqueta duplicada na planilha!`, 'red', prodName, prodQty);
+                    setFeedback(code, `⚠️ ERRO: Etiqueta duplicada!`, 'red', prodName, prodQty);
                     return;
                 }
 
