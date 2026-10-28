@@ -84,7 +84,7 @@
                     <i data-lucide="file-up" class="w-8 h-8"></i>
                 </div>
                 <h2 class="text-xl font-bold">Importe sua Planilha do ML ou Shopee</h2>
-                <p class="text-sm text-slate-400">O sistema identifica automaticamente as etiquetas e dados de envio.</p>
+                <p class="text-sm text-slate-400">O sistema identifica automaticamente as etiquetas, produtos e quantidades.</p>
                 
                 <div class="pt-2">
                     <label for="fileInput" class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-3 rounded-xl inline-flex items-center gap-2 shadow-lg transition">
@@ -104,14 +104,15 @@
                         <i data-lucide="scan-barcode" class="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
                         <input type="text" id="barcodeInput" placeholder="Bipe o código de barras ou digite o rastreio aqui..." autocomplete="off" autofocus class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-slate-500 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20">
                     </div>
-                    <!-- Destaque do Último Bipado -->
-                    <div id="lastScanFeedback" class="w-full lg:w-[350px] px-4 py-3 rounded-xl border border-slate-700 bg-slate-900 text-left">
+                    <!-- Destaque do Último Bipado com Etiqueta Clara -->
+                    <div id="lastScanFeedback" class="w-full lg:w-[380px] px-4 py-3 rounded-xl border border-slate-700 bg-slate-900 text-left">
                         <div class="flex justify-between items-center border-b border-slate-800 pb-1 mb-1">
                             <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Último Bipado</span>
                             <span id="lastScanStatusText" class="text-xs font-semibold">Aguardando...</span>
                         </div>
-                        <span id="lastScannedCodeText" class="block text-sm font-mono font-bold text-slate-300 truncate">Nenhum</span>
-                        <div id="lastScanProductInfo" class="mt-1 text-xs text-blue-300 truncate font-medium">Produto: -</div>
+                        <div class="text-xs text-slate-400">Etiqueta/Rastreio:</div>
+                        <span id="lastScannedCodeText" class="block text-sm font-mono font-bold text-blue-400 truncate">Nenhum</span>
+                        <div id="lastScanProductInfo" class="mt-1 text-xs text-slate-200 truncate font-medium">Produto: -</div>
                         <div id="lastScanQtyInfo" class="text-xs text-amber-300 font-semibold">Qtd: -</div>
                     </div>
                 </div>
@@ -121,7 +122,7 @@
             <section class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
                 <div class="p-4 border-b border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 class="font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="list" class="w-5 h-5 text-blue-400"></i> Lista de Encomendas Carregadas
+                        <i data-lucide="list" class="w-5 h-5 text-blue-400"></i> Lista de Encomendas e Etiquetas
                     </h3>
                     <div class="flex gap-2">
                         <button class="filter-btn active bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium" data-filter="all">Todos</button>
@@ -136,7 +137,7 @@
                         <thead class="bg-slate-900/80 text-slate-400 uppercase text-[11px] tracking-wider sticky top-0 backdrop-blur-sm">
                             <tr>
                                 <th class="p-3.5">Status</th>
-                                <th class="p-3.5">Código / Rastreio</th>
+                                <th class="p-3.5">Etiqueta / Rastreio</th>
                                 <th class="p-3.5">Produto / Descrição</th>
                                 <th class="p-3.5">Qtd</th>
                                 <th class="p-3.5 text-right">Ação</th>
@@ -207,7 +208,7 @@
         });
 
         window.addEventListener('DOMContentLoaded', () => {
-            const savedState = localStorage.getItem('conferencia_state_v2');
+            const savedState = localStorage.getItem('conferencia_state_v3');
             if (savedState) {
                 try {
                     const parsed = JSON.parse(savedState);
@@ -215,13 +216,13 @@
                         recoveryBanner.classList.remove('hidden');
                     }
                 } catch(e) {
-                    localStorage.removeItem('conferencia_state_v2');
+                    localStorage.removeItem('conferencia_state_v3');
                 }
             }
         });
 
         document.getElementById('btnResume').addEventListener('click', () => {
-            const savedState = JSON.parse(localStorage.getItem('conferencia_state_v2'));
+            const savedState = JSON.parse(localStorage.getItem('conferencia_state_v3'));
             excelData = savedState.data;
 
             recoveryBanner.classList.add('hidden');
@@ -236,7 +237,7 @@
 
         document.getElementById('btnDiscard').addEventListener('click', () => {
             if (confirm("Tem certeza que deseja descartar a conferência salva?")) {
-                localStorage.removeItem('conferencia_state_v2');
+                localStorage.removeItem('conferencia_state_v3');
                 recoveryBanner.classList.add('hidden');
             }
         });
@@ -247,7 +248,7 @@
                     data: excelData,
                     timestamp: new Date().toISOString()
                 };
-                localStorage.setItem('conferencia_state_v2', JSON.stringify(state));
+                localStorage.setItem('conferencia_state_v3', JSON.stringify(state));
             }
         }
 
@@ -270,11 +271,11 @@
                         return;
                     }
 
-                    // Encontra a linha de cabeçalho correta
+                    // Encontra a linha de cabeçalho
                     let headerRowIndex = 0;
                     for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
                         const rowStr = JSON.stringify(rawJson[i]).toLowerCase();
-                        if (rowStr.includes('rastreamento') || rowStr.includes('código') || rowStr.includes('codigo') || rowStr.includes('tracking') || rowStr.includes('shipping') || rowStr.includes('pedido') || rowStr.includes('mel')) {
+                        if (rowStr.includes('rastreamento') || rowStr.includes('rastreio') || rowStr.includes('código') || rowStr.includes('codigo') || rowStr.includes('tracking') || rowStr.includes('shipping') || rowStr.includes('pedido') || rowStr.includes('mel') || rowStr.includes('etiqueta')) {
                             headerRowIndex = i;
                             break;
                         }
@@ -282,14 +283,13 @@
 
                     const headers = rawJson[headerRowIndex];
                     
-                    // Identifica automaticamente quais colunas são Código, Produto e Qtd com base nos títulos
                     let codeColIdx = -1;
                     let prodColIdx = -1;
                     let qtyColIdx = -1;
 
                     headers.forEach((h, idx) => {
                         const lower = String(h || '').toLowerCase();
-                        if (codeColIdx === -1 && (lower.includes('rastreamento') || lower.includes('rastreio') || lower.includes('código') || lower.includes('codigo') || lower.includes('tracking') || lower.includes('shipping') || lower.includes('etiqueta'))) {
+                        if (codeColIdx === -1 && (lower.includes('rastreamento') || lower.includes('rastreio') || lower.includes('código') || lower.includes('codigo') || lower.includes('tracking') || lower.includes('shipping') || lower.includes('etiqueta') || lower.includes('nº do pedido'))) {
                             codeColIdx = idx;
                         }
                         if (prodColIdx === -1 && (lower.includes('produto') || lower.includes('descrição') || lower.includes('descricao') || lower.includes('título') || lower.includes('titulo') || lower.includes('item'))) {
@@ -300,7 +300,7 @@
                         }
                     });
 
-                    // Se não achou por nome, pega a primeira coluna provável para código
+                    // Caso o cabeçalho não tenha palavra-chave exata, varre a primeira coluna válida como código
                     if (codeColIdx === -1) codeColIdx = 0;
 
                     excelData = [];
@@ -310,13 +310,11 @@
                         if (!rowCols || rowCols.every(cell => String(cell).trim() === "")) continue;
 
                         const codeVal = String(rowCols[codeColIdx] || '').trim();
-                        // Ignora linhas que não parecem códigos válidos (como linhas vazias ou textos informativos longos)
-                        if (!codeVal || codeVal.length < 5 || codeVal.toLowerCase().includes('o pacote não estava')) continue;
+                        if (!codeVal || codeVal.length < 3 || codeVal.toLowerCase().includes('o pacote não estava')) continue;
 
                         const prodVal = prodColIdx !== -1 && rowCols[prodColIdx] ? String(rowCols[prodColIdx]).trim() : 'Produto não informado';
                         const qtyVal = qtyColIdx !== -1 && rowCols[qtyColIdx] ? String(rowCols[qtyColIdx]).trim() : '1';
 
-                        // Verifica se é cancelado em qualquer coluna da linha
                         let isCanceled = false;
                         rowCols.forEach(cell => {
                             const valStr = String(cell || '').toLowerCase();
@@ -335,7 +333,7 @@
                     }
 
                     if (excelData.length === 0) {
-                        alert("Não foram encontrados códigos de rastreio válidos na planilha. Verifique o arquivo.");
+                        alert("Não foram encontrados códigos de rastreio válidos na planilha.");
                         return;
                     }
 
@@ -349,7 +347,7 @@
                     barcodeInput.focus();
 
                 } catch(err) {
-                    alert("Erro ao ler a planilha. Certifique-se de que é um arquivo válido do Mercado Livre ou Shopee.");
+                    alert("Erro ao ler a planilha.");
                     console.error(err);
                 }
             };
@@ -420,7 +418,7 @@
             lastScanProductInfo.textContent = `Produto: ${product}`;
             lastScanQtyInfo.textContent = `Quantidade: ${qty}`;
             
-            lastScanFeedback.className = "w-full lg:w-[350px] px-4 py-3 rounded-xl border text-left transition-all duration-200";
+            lastScanFeedback.className = "w-full lg:w-[380px] px-4 py-3 rounded-xl border text-left transition-all duration-200";
             
             if (color === 'emerald') {
                 lastScanFeedback.classList.add('bg-emerald-950/60', 'border-emerald-500');
@@ -471,8 +469,8 @@
 
                 tr.innerHTML = `
                     <td class="p-3.5">${statusBadge}</td>
-                    <td class="p-3.5 font-mono font-medium text-slate-200">${item.code}</td>
-                    <td class="p-3.5 text-slate-300 font-medium max-w-xs truncate" title="${item.product}">${item.product}</td>
+                    <td class="p-3.5 font-mono font-bold text-blue-400">${item.code}</td>
+                    <td class="p-3.5 text-slate-200 font-medium max-w-xs truncate" title="${item.product}">${item.product}</td>
                     <td class="p-3.5 font-bold text-amber-400">${item.qty}</td>
                     <td class="p-3.5 text-right">
                         <button onclick="toggleManualCheck('${item.code}')" class="text-xs text-slate-400 hover:text-white bg-slate-700/50 hover:bg-slate-700 px-2 py-1 rounded border border-slate-600 transition">
@@ -526,7 +524,7 @@
 
         document.getElementById('btnExport').addEventListener('click', () => {
             const exportData = excelData.map(row => ({
-                'Código / Rastreio': row.code,
+                'Etiqueta / Rastreio': row.code,
                 'Produto': row.product,
                 'Quantidade': row.qty,
                 'Status Conferência': row.isCanceled ? 'CANCELADO' : row.status
@@ -540,7 +538,7 @@
 
         document.getElementById('btnReset').addEventListener('click', () => {
             if (confirm("Deseja realmente iniciar uma nova conferência? Certifique-se de ter exportado os dados da conferência atual.")) {
-                localStorage.removeItem('conferencia_state_v2');
+                localStorage.removeItem('conferencia_state_v3');
                 location.reload();
             }
         });
