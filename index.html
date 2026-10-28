@@ -95,17 +95,36 @@
             </div>
         </section>
 
-        <!-- Configuração de Coluna (Oculto inicialmente) -->
-        <section id="columnConfigSection" class="hidden bg-slate-800 rounded-2xl border border-slate-700 p-6">
-            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+        <!-- Configuração de Colunas -->
+        <section id="columnConfigSection" class="hidden bg-slate-800 rounded-2xl border border-slate-700 p-6 space-y-4">
+            <h3 class="text-lg font-semibold flex items-center gap-2">
                 <i data-lucide="settings" class="w-5 h-5 text-blue-400"></i> Mapeamento da Planilha
             </h3>
-            <div class="grid md:grid-cols-2 gap-4 items-end">
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                 <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-2">Selecione a coluna que contém os Códigos/Etiquetas:</label>
-                    <select id="columnSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500">
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Código/Rastreio:</label>
+                    <select id="columnSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Produto/Descrição:</label>
+                    <select id="productColumnSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500">
+                        <option value="">(Opcional)</option>
                     </select>
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Quantidade:</label>
+                    <select id="qtyColumnSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500">
+                        <option value="">(Opcional)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Status / Cancelamento:</label>
+                    <select id="statusColumnSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500">
+                        <option value="">(Opcional)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="pt-2 flex justify-end">
                 <button id="btnStartScan" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 transition">
                     <i data-lucide="play" class="w-5 h-5"></i> Iniciar Conferência
                 </button>
@@ -116,13 +135,20 @@
         <div id="scanWorkflow" class="hidden space-y-6">
             <!-- Campo Principal de Bipagem -->
             <section class="bg-slate-800 rounded-2xl border-2 border-blue-500 p-6 scan-pulse shadow-xl">
-                <div class="flex flex-col md:flex-row items-center gap-4">
+                <div class="flex flex-col lg:flex-row items-center gap-4">
                     <div class="relative flex-1 w-full">
                         <i data-lucide="scan-barcode" class="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
                         <input type="text" id="barcodeInput" placeholder="Bipe o código de barras ou digite o rastreio aqui..." autocomplete="off" autofocus class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-slate-500 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20">
                     </div>
-                    <div id="lastScanFeedback" class="w-full md:w-auto min-w-[220px] px-4 py-3 rounded-xl border border-slate-700 bg-slate-900 text-center text-sm font-semibold text-slate-400">
-                        Aguardando primeira leitura...
+                    <!-- Destaque do Último Bipado com Produto, Qtd e Status -->
+                    <div id="lastScanFeedback" class="w-full lg:w-[350px] px-4 py-3 rounded-xl border border-slate-700 bg-slate-900 text-left">
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-1 mb-1">
+                            <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Último Bipado</span>
+                            <span id="lastScanStatusText" class="text-xs font-semibold">Aguardando...</span>
+                        </div>
+                        <span id="lastScannedCodeText" class="block text-sm font-mono font-bold text-slate-300 truncate">Nenhum</span>
+                        <div id="lastScanProductInfo" class="mt-1 text-xs text-blue-300 truncate font-medium">Produto: -</div>
+                        <div id="lastScanQtyInfo" class="text-xs text-amber-300 font-semibold">Qtd: -</div>
                     </div>
                 </div>
             </section>
@@ -131,12 +157,13 @@
             <section class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
                 <div class="p-4 border-b border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 class="font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="list" class="w-5 h-5 text-blue-400"></i> Lista de Encomendas
+                        <i data-lucide="list" class="w-5 h-5 text-blue-400"></i> Lista de Encomendas (Coluna: <span id="activeColumnLabel" class="text-blue-400 font-mono"></span>)
                     </h3>
                     <div class="flex gap-2">
                         <button class="filter-btn active bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium" data-filter="all">Todos</button>
                         <button class="filter-btn bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-slate-600" data-filter="pending">Pendentes</button>
                         <button class="filter-btn bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-slate-600" data-filter="checked">Conferidos</button>
+                        <button class="filter-btn bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-slate-600" data-filter="canceled">Cancelados</button>
                     </div>
                 </div>
 
@@ -146,7 +173,8 @@
                             <tr>
                                 <th class="p-3.5">Status</th>
                                 <th class="p-3.5">Código / Rastreio</th>
-                                <th class="p-3.5">Detalhes / Dados</th>
+                                <th class="p-3.5">Produto / Descrição</th>
+                                <th class="p-3.5">Qtd</th>
                                 <th class="p-3.5 text-right">Ação</th>
                             </tr>
                         </thead>
@@ -186,23 +214,38 @@
             setTimeout(() => playBeep(180, 'sawtooth', 0.3), 200);
         }
 
+        function playCanceledSound() {
+            playBeep(150, 'sawtooth', 0.3);
+            setTimeout(() => playBeep(100, 'sawtooth', 0.4), 250);
+        }
+
         let excelData = [];
         let labelColumn = '';
+        let productColumn = '';
+        let qtyColumn = '';
+        let statusColumn = '';
         let currentFilter = 'all';
 
         const fileInput = document.getElementById('fileInput');
         const importSection = document.getElementById('importSection');
         const columnConfigSection = document.getElementById('columnConfigSection');
         const columnSelect = document.getElementById('columnSelect');
+        const productColumnSelect = document.getElementById('productColumnSelect');
+        const qtyColumnSelect = document.getElementById('qtyColumnSelect');
+        const statusColumnSelect = document.getElementById('statusColumnSelect');
         const btnStartScan = document.getElementById('btnStartScan');
         const scanWorkflow = document.getElementById('scanWorkflow');
         const barcodeInput = document.getElementById('barcodeInput');
         const tableBody = document.getElementById('tableBody');
         const statsBar = document.getElementById('statsBar');
         const lastScanFeedback = document.getElementById('lastScanFeedback');
+        const lastScannedCodeText = document.getElementById('lastScannedCodeText');
+        const lastScanStatusText = document.getElementById('lastScanStatusText');
+        const lastScanProductInfo = document.getElementById('lastScanProductInfo');
+        const lastScanQtyInfo = document.getElementById('lastScanQtyInfo');
         const recoveryBanner = document.getElementById('recoveryBanner');
+        const activeColumnLabel = document.getElementById('activeColumnLabel');
 
-        // Alerta de confirmação antes de fechar/atualizar a página se houver conferência ativa
         window.addEventListener('beforeunload', (e) => {
             if (excelData.length > 0) {
                 e.preventDefault();
@@ -210,7 +253,6 @@
             }
         });
 
-        // Verificar se há dados salvos ao carregar a página
         window.addEventListener('DOMContentLoaded', () => {
             const savedState = localStorage.getItem('conferencia_state');
             if (savedState) {
@@ -229,6 +271,10 @@
             const savedState = JSON.parse(localStorage.getItem('conferencia_state'));
             excelData = savedState.data;
             labelColumn = savedState.labelColumn;
+            productColumn = savedState.productColumn || '';
+            qtyColumn = savedState.qtyColumn || '';
+            statusColumn = savedState.statusColumn || '';
+            activeColumnLabel.textContent = labelColumn;
 
             recoveryBanner.classList.add('hidden');
             importSection.classList.add('hidden');
@@ -252,6 +298,9 @@
                 const state = {
                     data: excelData,
                     labelColumn: labelColumn,
+                    productColumn: productColumn,
+                    qtyColumn: qtyColumn,
+                    statusColumn: statusColumn,
                     timestamp: new Date().toISOString()
                 };
                 localStorage.setItem('conferencia_state', JSON.stringify(state));
@@ -276,198 +325,30 @@
                     return;
                 }
 
-                excelData.forEach(row => row._statusConferencia = 'Pendente');
+                // Identifica se o pedido é cancelado na importação
+                excelData.forEach(row => {
+                    row._statusConferencia = 'Pendente';
+                    row._isCanceled = false;
+                    
+                    // Procura termos de cancelamento em todas as colunas caso o status não seja mapeado diretamente
+                    for (let key in row) {
+                        const valStr = String(row[key] || '').toLowerCase();
+                        if (valStr.includes('cancelado') || valStr.includes('cancelada') || valStr.includes('canceled')) {
+                            row._isCanceled = true;
+                            break;
+                        }
+                    }
+                });
 
                 const columns = Object.keys(excelData[0]);
                 columnSelect.innerHTML = '';
+                productColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
+                qtyColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
+                statusColumnSelect.innerHTML = '<option value="">(Opcional)</option>';
                 
-                let autoSelected = false;
+                let autoSelectedLabel = false;
+                let autoSelectedProduct = false;
+                let autoSelectedQty = false;
+                let autoSelectedStatus = false;
+
                 columns.forEach(col => {
-                    const option = document.createElement('option');
-                    option.value = col;
-                    option.textContent = col;
-                    
-                    const lower = col.toLowerCase();
-                    if (!autoSelected && (lower.includes('código') || lower.includes('rastreio') || lower.includes('etiqueta') || lower.includes('tracking') || lower.includes('shipping') || lower.includes('envio'))) {
-                        option.selected = true;
-                        autoSelected = true;
-                    }
-                    columnSelect.appendChild(option);
-                });
-
-                importSection.classList.add('hidden');
-                columnConfigSection.classList.remove('hidden');
-            };
-            reader.readAsBinaryString(file);
-        });
-
-        btnStartScan.addEventListener('click', () => {
-            labelColumn = columnSelect.value;
-            if (!labelColumn) return;
-
-            columnConfigSection.classList.add('hidden');
-            scanWorkflow.classList.remove('hidden');
-            statsBar.classList.remove('hidden');
-
-            saveStateToLocalStorage();
-            renderTable();
-            updateStats();
-            barcodeInput.focus();
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!scanWorkflow.classList.contains('hidden') && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
-                barcodeInput.focus();
-            }
-        });
-
-        barcodeInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const val = barcodeInput.value.trim();
-                barcodeInput.value = '';
-                if (!val) return;
-
-                processBarcode(val);
-            }
-        });
-
-        function processBarcode(code) {
-            const foundItem = excelData.find(item => {
-                const itemCode = String(item[labelColumn] || '').trim();
-                return itemCode === code || itemCode.toLowerCase() === code.toLowerCase();
-            });
-
-            if (foundItem) {
-                if (foundItem._statusConferencia === 'Conferido') {
-                    playErrorSound();
-                    setFeedback(`Atenção: Código "${code}" já foi conferido!`, 'amber');
-                } else {
-                    foundItem._statusConferencia = 'Conferido';
-                    playSuccessSound();
-                    setFeedback(`OK: Código "${code}" conferido com sucesso!`, 'emerald');
-                }
-            } else {
-                playErrorSound();
-                setFeedback(`ERRO: Código "${code}" não encontrado na planilha!`, 'red');
-            }
-
-            saveStateToLocalStorage();
-            renderTable();
-            updateStats();
-        }
-
-        function setFeedback(msg, color) {
-            lastScanFeedback.textContent = msg;
-            lastScanFeedback.className = "w-full md:w-auto min-w-[220px] px-4 py-3 rounded-xl border text-center text-sm font-semibold transition-all duration-200";
-            
-            if (color === 'emerald') {
-                lastScanFeedback.classList.add('bg-emerald-950/60', 'border-emerald-500', 'text-emerald-400');
-            } else if (color === 'amber') {
-                lastScanFeedback.classList.add('bg-amber-950/60', 'border-amber-500', 'text-amber-400');
-            } else if (color === 'red') {
-                lastScanFeedback.classList.add('bg-red-950/60', 'border-red-500', 'text-red-400');
-            }
-        }
-
-        function renderTable() {
-            tableBody.innerHTML = '';
-
-            const filteredData = excelData.filter(item => {
-                if (currentFilter === 'pending') return item._statusConferencia === 'Pendente';
-                if (currentFilter === 'checked') return item._statusConferencia === 'Conferido';
-                return true;
-            });
-
-            filteredData.forEach((item) => {
-                const tr = document.createElement('tr');
-                const isConferido = item._statusConferencia === 'Conferido';
-
-                tr.className = isConferido 
-                    ? 'bg-emerald-950/20 hover:bg-emerald-900/30 transition-colors' 
-                    : 'hover:bg-slate-700/30 transition-colors';
-
-                const keys = Object.keys(item).filter(k => k !== labelColumn && k !== '_statusConferencia');
-                const extraDetails = keys.slice(0, 2).map(k => `<span class="text-xs text-slate-400">${k}: <strong class="text-slate-300">${item[k]}</strong></span>`).join(' | ');
-
-                tr.innerHTML = `
-                    <td class="p-3.5">
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${isConferido ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
-                            <i data-lucide="${isConferido ? 'check-circle-2' : 'clock'}" class="w-3.5 h-3.5"></i>
-                            ${item._statusConferencia}
-                        </span>
-                    </td>
-                    <td class="p-3.5 font-mono font-medium text-slate-200">
-                        ${item[labelColumn] || '-'}
-                    </td>
-                    <td class="p-3.5">
-                        ${extraDetails || '<span class="text-slate-500 text-xs">Sem detalhes adicionais</span>'}
-                    </td>
-                    <td class="p-3.5 text-right">
-                        <button onclick="toggleManualCheck('${item[labelColumn]}')" class="text-xs text-slate-400 hover:text-white bg-slate-700/50 hover:bg-slate-700 px-2 py-1 rounded border border-slate-600 transition">
-                            Alternar
-                        </button>
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-            });
-
-            lucide.createIcons();
-        }
-
-        window.toggleManualCheck = function(code) {
-            const item = excelData.find(i => String(i[labelColumn]).trim() === String(code).trim());
-            if (item) {
-                item._statusConferencia = item._statusConferencia === 'Conferido' ? 'Pendente' : 'Conferido';
-                saveStateToLocalStorage();
-                renderTable();
-                updateStats();
-            }
-        };
-
-        function updateStats() {
-            const total = excelData.length;
-            const conferidos = excelData.filter(i => i._statusConferencia === 'Conferido').length;
-            const pendentes = total - conferidos;
-
-            document.getElementById('totalCount').textContent = total;
-            document.getElementById('conferidosCount').textContent = conferidos;
-            document.getElementById('pendentesCount').textContent = pendentes;
-        }
-
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.filter-btn').forEach(b => {
-                    b.classList.remove('bg-blue-600', 'text-white');
-                    b.classList.add('bg-slate-700', 'text-slate-300');
-                });
-                e.target.classList.remove('bg-slate-700', 'text-slate-300');
-                e.target.classList.add('bg-blue-600', 'text-white');
-
-                currentFilter = e.target.dataset.filter;
-                renderTable();
-            });
-        });
-
-        document.getElementById('btnExport').addEventListener('click', () => {
-            const exportData = excelData.map(row => {
-                const newRow = { ...row };
-                newRow['Status Conferência'] = newRow._statusConferencia;
-                delete newRow._statusConferencia;
-                return newRow;
-            });
-
-            const worksheet = XLSX.utils.json_to_sheet(exportData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
-            XLSX.writeFile(workbook, `Conferencia_Etiquetas_${new Date().toISOString().slice(0,10)}.xlsx`);
-        });
-
-        document.getElementById('btnReset').addEventListener('click', () => {
-            if (confirm("Deseja realmente iniciar uma nova conferência? Certifique-se de ter exportado os dados da conferência atual.")) {
-                localStorage.removeItem('conferencia_state');
-                location.reload();
-            }
-        });
-    </script>
-</body>
-</html>
