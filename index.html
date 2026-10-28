@@ -276,7 +276,7 @@
             db.collection('salas').doc(currentRoom).set({
                 items: excelData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }).catch(err => {
+            }, { merge: true }).catch(err => {
                 console.error("Erro ao sincronizar com a nuvem:", err);
             });
         }
