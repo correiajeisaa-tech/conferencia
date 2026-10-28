@@ -8,9 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS para ler e exportar arquivos Excel/CSV -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- Firebase SDK (Compat) -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -35,31 +32,32 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold text-white">Conferência de Encomendas</h1>
-                    <p class="text-xs text-slate-400">Mercado Livre & Shopee Expedição (Nuvem)</p>
+                    <p class="text-xs text-slate-400">Mercado Livre & Shopee Expedição</p>
                 </div>
             </div>
 
-            <!-- Placar de Status & Sala Ativa -->
-            <div id="statsBar" class="hidden flex items-center gap-3 bg-slate-900 px-4 py-2 rounded-xl border border-slate-700">
-                <span id="roomBadge" class="text-xs bg-blue-600/30 text-blue-400 border border-blue-500/30 px-2 py-1 rounded font-mono">Sala: -</span>
-                <div class="h-6 w-px bg-slate-700"></div>
+            <!-- Placar de Status -->
+            <div id="statsBar" class="hidden flex items-center gap-4 bg-slate-900 px-4 py-2 rounded-xl border border-slate-700">
                 <div class="text-center">
-                    <span class="text-[10px] text-slate-400 block">Total</span>
-                    <span id="totalCount" class="text-sm font-bold text-slate-200">0</span>
+                    <span class="text-xs text-slate-400 block">Total</span>
+                    <span id="totalCount" class="text-lg font-bold text-slate-200">0</span>
                 </div>
+                <div class="h-8 w-px bg-slate-700"></div>
                 <div class="text-center">
-                    <span class="text-[10px] text-emerald-400 block">Conferidos</span>
-                    <span id="conferidosCount" class="text-sm font-bold text-emerald-400">0</span>
+                    <span class="text-xs text-emerald-400 block">Conferidos</span>
+                    <span id="conferidosCount" class="text-lg font-bold text-emerald-400">0</span>
                 </div>
+                <div class="h-8 w-px bg-slate-700"></div>
                 <div class="text-center">
-                    <span class="text-[10px] text-amber-400 block">Pendentes</span>
-                    <span id="pendentesCount" class="text-sm font-bold text-amber-400">0</span>
+                    <span class="text-xs text-amber-400 block">Pendentes</span>
+                    <span id="pendentesCount" class="text-lg font-bold text-amber-400">0</span>
                 </div>
-                <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition ml-2">
-                    <i data-lucide="download" class="w-3.5 h-3.5"></i> Exportar
+                <div class="h-8 w-px bg-slate-700"></div>
+                <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition">
+                    <i data-lucide="download" class="w-4 h-4"></i> Exportar
                 </button>
-                <button id="btnChangeRoom" class="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2.5 py-1.5 rounded-lg transition" title="Mudar de Sala">
-                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Sair
+                <button id="btnReset" class="bg-red-600/80 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition" title="Nova conferência">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Nova
                 </button>
             </div>
         </div>
@@ -67,40 +65,54 @@
 
     <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
 
-        <!-- Passo 0: Tela de Identificação da Sala -->
-        <section id="roomSection" class="bg-slate-800 rounded-2xl border border-slate-700 p-8 max-w-md mx-auto text-center space-y-6 mt-10 shadow-2xl">
-            <div class="w-16 h-16 bg-blue-600/20 text-blue-400 rounded-full flex items-center justify-center mx-auto border border-blue-500/30">
-                <i data-lucide="cloud-cog" class="w-8 h-8"></i>
-            </div>
-            <div>
-                <h2 class="text-xl font-bold text-white">Aceder à Sala de Conferência</h2>
-                <p class="text-xs text-slate-400 mt-1">Digite o mesmo nome de sala no computador e no coletor para sincronizar em tempo real.</p>
-            </div>
-            <div class="space-y-3">
-                <input type="text" id="roomInput" placeholder="Ex: 01" autocomplete="off" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-center text-lg font-mono text-white placeholder-slate-600 focus:outline-none focus:border-blue-500">
-                <button id="btnJoinRoom" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-xl transition shadow-lg flex items-center justify-center gap-2">
-                    <i data-lucide="wifi" class="w-4 h-4"></i> Entrar na Sala
-                </button>
+        <!-- Passo 1: Importar Arquivo ou Inserir Código -->
+        <section id="importSection" class="bg-slate-800 rounded-2xl border border-slate-700 p-6 md:p-8">
+            <div class="max-w-xl mx-auto space-y-6">
+                <!-- Opção A: Carregar no PC -->
+                <div class="text-center space-y-3 pb-6 border-b border-slate-700">
+                    <div class="w-14 h-14 bg-slate-700 text-blue-400 rounded-full flex items-center justify-center mx-auto">
+                        <i data-lucide="file-up" class="w-7 h-7"></i>
+                    </div>
+                    <h2 class="text-lg font-bold">1. Carregar Planilha (Computador)</h2>
+                    <p class="text-xs text-slate-400">Importe a planilha do ML ou Shopee para gerar o código de sincronização.</p>
+                    <div>
+                        <label for="fileInput" class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-medium px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-lg transition text-sm">
+                            <i data-lucide="upload" class="w-4 h-4"></i> Selecionar Planilha
+                        </label>
+                        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
+                    </div>
+                </div>
+
+                <!-- Opção B: Resgatar no Coletor -->
+                <div class="text-center space-y-3 pt-2">
+                    <div class="w-14 h-14 bg-slate-700 text-emerald-400 rounded-full flex items-center justify-center mx-auto">
+                        <i data-lucide="key-round" class="w-7 h-7"></i>
+                    </div>
+                    <h2 class="text-lg font-bold">2. Sincronizar no Coletor</h2>
+                    <p class="text-xs text-slate-400">Cole abaixo o código gerado no computador para carregar os dados instantaneamente.</p>
+                    <div class="flex gap-2">
+                        <input type="text" id="syncCodeInput" placeholder="Cole o código de sincronização aqui..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+                        <button id="btnLoadSync" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1">
+                            <i data-lucide="check" class="w-4 h-4"></i> Carregar
+                        </button>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <!-- Passo 1: Importar Arquivo -->
-        <section id="importSection" class="hidden bg-slate-800 rounded-2xl border border-slate-700 p-6 md:p-8 text-center">
-            <div class="max-w-xl mx-auto space-y-4">
-                <div class="w-16 h-16 bg-slate-700 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <i data-lucide="file-up" class="w-8 h-8"></i>
-                </div>
-                <h2 class="text-xl font-bold">Importe sua Planilha do ML ou Shopee</h2>
-                <p class="text-sm text-slate-400">Ao importar aqui, os dados vão para a nuvem e aparecem instantaneamente no coletor.</p>
-                
-                <div class="pt-2">
-                    <label for="fileInput" class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-medium px-6 py-3 rounded-xl inline-flex items-center gap-2 shadow-lg transition">
-                        <i data-lucide="upload" class="w-5 h-5"></i> Selecionar Planilha
-                    </label>
-                    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
-                </div>
+        <!-- Modal / Caixa do Código Gerado -->
+        <div id="codeModal" class="hidden bg-slate-800 border-2 border-emerald-500/50 p-6 rounded-2xl space-y-3">
+            <h3 class="font-bold text-emerald-400 flex items-center gap-2">
+                <i data-lucide="check-circle-2" class="w-5 h-5"></i> Planilha Pronta para o Coletor!
+            </h3>
+            <p class="text-xs text-slate-300">Copie o código abaixo e cole no campo de sincronização do coletor de dados:</p>
+            <div class="flex gap-2">
+                <textarea id="generatedCodeBox" readonly class="w-full h-20 bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-300 focus:outline-none"></textarea>
+                <button id="btnCopyCode" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 rounded-xl transition text-xs flex flex-col items-center justify-center gap-1">
+                    <i data-lucide="copy" class="w-5 h-5"></i> Copiar
+                </button>
             </div>
-        </section>
+        </div>
 
         <!-- Passo 2: Campo de Bipagem e Tabela -->
         <div id="scanWorkflow" class="hidden space-y-6">
@@ -129,7 +141,7 @@
             <section class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
                 <div class="p-4 border-b border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 class="font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="list" class="w-5 h-5 text-blue-400"></i> Lista Sincronizada em Tempo Real
+                        <i data-lucide="list" class="w-5 h-5 text-blue-400"></i> Lista de Encomendas
                     </h3>
                     <div class="flex gap-2">
                         <button class="filter-btn active bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium" data-filter="all">Todos</button>
@@ -160,12 +172,6 @@
     </main>
 
     <script>
-        const firebaseConfig = {
-            projectId: "conferencia-expedicao-ml-shopee"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
         lucide.createIcons();
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -186,98 +192,25 @@
         function playErrorSound() { playBeep(220, 'sawtooth', 0.25); setTimeout(() => playBeep(180, 'sawtooth', 0.3), 200); }
         function playCanceledSound() { playBeep(150, 'sawtooth', 0.3); setTimeout(() => playBeep(100, 'sawtooth', 0.4), 250); }
 
-        let currentRoom = '';
         let excelData = [];
         let currentFilter = 'all';
-        let unsubscribeFirestore = null;
 
-        const roomSection = document.getElementById('roomSection');
-        const importSection = document.getElementById('importSection');
-        const scanWorkflow = document.getElementById('scanWorkflow');
-        const statsBar = document.getElementById('statsBar');
-        const roomInput = document.getElementById('roomInput');
-        const btnJoinRoom = document.getElementById('btnJoinRoom');
-        const btnChangeRoom = document.getElementById('btnChangeRoom');
-        const roomBadge = document.getElementById('roomBadge');
         const fileInput = document.getElementById('fileInput');
+        const importSection = document.getElementById('importSection');
+        const codeModal = document.getElementById('codeModal');
+        const generatedCodeBox = document.getElementById('generatedCodeBox');
+        const btnCopyCode = document.getElementById('btnCopyCode');
+        const syncCodeInput = document.getElementById('syncCodeInput');
+        const btnLoadSync = document.getElementById('btnLoadSync');
+        const scanWorkflow = document.getElementById('scanWorkflow');
         const barcodeInput = document.getElementById('barcodeInput');
         const tableBody = document.getElementById('tableBody');
+        const statsBar = document.getElementById('statsBar');
         const lastScanFeedback = document.getElementById('lastScanFeedback');
         const lastScannedCodeText = document.getElementById('lastScannedCodeText');
         const lastScanStatusText = document.getElementById('lastScanStatusText');
         const lastScanProductInfo = document.getElementById('lastScanProductInfo');
         const lastScanQtyInfo = document.getElementById('lastScanQtyInfo');
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const savedRoom = localStorage.getItem('conferencia_room');
-            if (savedRoom) {
-                roomInput.value = savedRoom;
-            }
-        });
-
-        btnJoinRoom.addEventListener('click', () => {
-            const room = roomInput.value.trim().toLowerCase();
-            if (!room) {
-                alert("Digite o nome da sala!");
-                return;
-            }
-            currentRoom = room;
-            localStorage.setItem('conferencia_room', room);
-            roomBadge.textContent = `Sala: ${room}`;
-
-            roomSection.classList.add('hidden');
-            listenToRoom(room);
-        });
-
-        btnChangeRoom.addEventListener('click', () => {
-            if (unsubscribeFirestore) unsubscribeFirestore();
-            localStorage.removeItem('conferencia_room');
-            scanWorkflow.classList.add('hidden');
-            importSection.classList.add('hidden');
-            statsBar.classList.add('hidden');
-            roomSection.classList.remove('hidden');
-        });
-
-        function listenToRoom(room) {
-            if (unsubscribeFirestore) unsubscribeFirestore();
-
-            unsubscribeFirestore = db.collection('salas').doc(room).onSnapshot((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    excelData = data.items || [];
-
-                    if (excelData.length > 0) {
-                        importSection.classList.add('hidden');
-                        scanWorkflow.classList.remove('hidden');
-                        statsBar.classList.remove('hidden');
-                        renderTable();
-                        updateStats();
-                        barcodeInput.focus();
-                    } else {
-                        scanWorkflow.classList.add('hidden');
-                        statsBar.classList.add('hidden');
-                        importSection.classList.remove('hidden');
-                    }
-                } else {
-                    db.collection('salas').doc(room).set({ items: [] }).catch(e => console.log(e));
-                    scanWorkflow.classList.add('hidden');
-                    statsBar.classList.add('hidden');
-                    importSection.classList.remove('hidden');
-                }
-            }, (error) => {
-                console.error("Erro no Firestore:", error);
-            });
-        }
-
-        function saveToCloud() {
-            if (!currentRoom) return;
-            db.collection('salas').doc(currentRoom).set({
-                items: excelData,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }).catch(err => {
-                console.error("Erro ao sincronizar com a nuvem:", err);
-            });
-        }
 
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -357,7 +290,14 @@
                     }
 
                     excelData = newItems;
-                    saveToCloud();
+                    
+                    // Gera o código compactado para sincronização
+                    const jsonString = JSON.stringify(excelData);
+                    const compressedCode = btoa(encodeURIComponent(jsonString));
+                    
+                    generatedCodeBox.value = compressedCode;
+                    codeModal.classList.remove('hidden');
+
                     importSection.classList.add('hidden');
                     scanWorkflow.classList.remove('hidden');
                     statsBar.classList.remove('hidden');
@@ -371,6 +311,41 @@
                 }
             };
             reader.readAsArrayBuffer(file);
+        });
+
+        btnCopyCode.addEventListener('click', () => {
+            generatedCodeBox.select();
+            document.execCommand('copy');
+            alert("Código de sincronização copiado com sucesso!");
+        });
+
+        btnLoadSync.addEventListener('click', () => {
+            const token = syncCodeInput.value.trim();
+            if (!token) {
+                alert("Cole o código de sincronização!");
+                return;
+            }
+
+            try {
+                const jsonString = decodeURIComponent(atob(token));
+                excelData = JSON.parse(jsonString);
+
+                if (!Array.isArray(excelData) || excelData.length === 0) {
+                    alert("Código inválido.");
+                    return;
+                }
+
+                importSection.classList.add('hidden');
+                codeModal.classList.add('hidden');
+                scanWorkflow.classList.remove('hidden');
+                statsBar.classList.remove('hidden');
+                renderTable();
+                updateStats();
+                barcodeInput.focus();
+            } catch(err) {
+                alert("Erro ao decodificar o código. Verifique se copiou inteiro.");
+                console.error(err);
+            }
         });
 
         document.addEventListener('click', (e) => {
@@ -418,7 +393,6 @@
                     foundItem.status = 'Conferido';
                     playSuccessSound();
                     setFeedback(code, `Conferido com sucesso!`, 'emerald', foundItem.product, foundItem.qty);
-                    saveToCloud();
                 }
             } else {
                 playErrorSound();
@@ -492,7 +466,6 @@
             if (item) {
                 if (item.isCanceled) alert("Atenção: Este pedido está marcado como cancelado na planilha!");
                 item.status = item.status === 'Conferido' ? 'Pendente' : 'Conferido';
-                saveToCloud();
                 renderTable();
                 updateStats();
             }
@@ -506,7 +479,7 @@
 
             document.getElementById('totalCount').textContent = total;
             document.getElementById('conferidosCount').textContent = conferidos;
-            document.getElementById('pendentesCount').textContent = pendentes;
+            document.getElementById('pendentesCount').textContent, document.getElementById('pendentesCount').textContent = pendentes;
         }
 
         document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -533,6 +506,12 @@
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
             XLSX.writeFile(workbook, `Conferencia_Etiquetas_${new Date().toISOString().slice(0,10)}.xlsx`);
+        });
+
+        document.getElementById('btnReset').addEventListener('click', () => {
+            if (confirm("Deseja iniciar uma nova conferência?")) {
+                location.reload();
+            }
         });
     </script>
 </body>
