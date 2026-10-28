@@ -440,7 +440,6 @@
                         let codeVal = String(rowCols[codeColIdx] || '').trim();
                         let orderVal = orderColIdx !== -1 ? String(rowCols[orderColIdx] || '').trim() : '';
 
-                        // Validação estrita: Ignora linhas inválidas ou lixo de IDs internos curtos
                         if (!codeVal || codeVal.length < 5 || codeVal.length > 40 || codeVal.toLowerCase().includes('o pacote não estava')) {
                             continue;
                         }
@@ -665,3 +664,33 @@
                 e.target.classList.add('bg-orange-600', 'text-white', 'shadow-sm');
                 currentFilter = e.target.dataset.filter;
                 renderTable();
+            });
+        });
+
+        document.getElementById('btnExport').addEventListener('click', () => {
+            if (!excelData || excelData.length === 0) {
+                alert("Não há dados para exportar.");
+                return;
+            }
+
+            try {
+                const exportData = excelData.map(row => ({
+                    'Etiqueta / Rastreio': row.code,
+                    'Número do Pedido': row.order || '',
+                    'Produto': row.product,
+                    'Quantidade': row.qty,
+                    'Status Conferência': row.isCanceled ? 'CANCELADO' : row.status
+                }));
+
+                const worksheet = XLSX.utils.json_to_sheet(exportData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
+                XLSX.writeFile(workbook, `ScanCheck_Conferencia_${currentRoom || 'Sala'}_${new Date().toISOString().slice(0,10)}.xlsx`);
+            } catch (err) {
+                console.error("Erro ao exportar arquivo:", err);
+                alert("Erro ao gerar o arquivo de download.");
+            }
+        });
+    </script>
+</body>
+</html>
