@@ -83,6 +83,7 @@
                 <button id="btnJoinRoom" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3.5 rounded-2xl transition shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2">
                     <i data-lucide="zap" class="w-4 h-4"></i> Entrar na Sala
                 </button>
+                <div id="roomStatusText" class="text-xs text-orange-400 font-medium hidden">Sincronizando com a nuvem...</div>
             </div>
         </section>
 
@@ -98,12 +99,12 @@
                 <div class="w-16 h-16 bg-zinc-800 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner">
                     <i data-lucide="file-spreadsheet" class="w-8 h-8"></i>
                 </div>
-                <h2 class="text-xl font-bold">Aguardando Planilha...</h2>
-                <p class="text-sm text-zinc-400">Assim que o computador carregar a planilha nesta sala, os dados aparecerão aqui automaticamente.</p>
+                <h2 class="text-xl font-bold">Carregar Planilha de Encomendas</h2>
+                <p class="text-sm text-zinc-400">Aguardando dados da sala... Se a planilha foi enviada pelo computador, ela abrirá em breve.</p>
                 
                 <div class="pt-3">
-                    <label for="fileInput" class="cursor-pointer bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium px-5 py-2.5 rounded-xl inline-flex items-center gap-2 transition text-xs">
-                        <i data-lucide="upload-cloud" class="w-4 h-4"></i> Ou Carregar por aqui também
+                    <label for="fileInput" class="cursor-pointer bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-3.5 rounded-2xl inline-flex items-center gap-2 shadow-lg shadow-orange-600/25 transition">
+                        <i data-lucide="upload-cloud" class="w-5 h-5"></i> Selecionar Planilha Excel/CSV
                     </label>
                     <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
                 </div>
@@ -208,6 +209,7 @@
         const btnChangeRoom = document.getElementById('btnChangeRoom');
         const roomBadge = document.getElementById('roomBadge');
         const roomBadgeImport = document.getElementById('roomBadgeImport');
+        const roomStatusText = document.getElementById('roomStatusText');
         const fileInput = document.getElementById('fileInput');
         const barcodeInput = document.getElementById('barcodeInput');
         const tableBody = document.getElementById('tableBody');
@@ -224,7 +226,7 @@
             statsBar.classList.add('hidden');
         });
 
-        btnJoinRoom.addEventListener('click', () => {
+        btnJoinRoom.addEventListener('click', async () => {
             const room = roomInput.value.trim().toLowerCase();
             if (!room) {
                 alert("Digite o nome da sala!");
@@ -233,8 +235,33 @@
             currentRoom = room;
             roomBadge.textContent = `Sala: ${room}`;
             roomBadgeImport.textContent = `Sala: ${room}`;
+            roomStatusText.classList.remove('hidden');
 
+            // Força primeiro uma leitura direta (Fetch) antes do Listener
+            try {
+                const docSnap = await db.collection('salas').doc(room).get();
+                if (docSnap.exists) {
+                    const data = docSnap.data();
+                    excelData = data.items || [];
+                }
+            } catch (err) {
+                console.error("Erro na leitura inicial:", err);
+            }
+
+            roomStatusText.classList.add('hidden');
             roomSection.classList.add('hidden');
+            
+            if (excelData.length > 0) {
+                importSection.classList.add('hidden');
+                scanWorkflow.classList.remove('hidden');
+                statsBar.classList.remove('hidden');
+                renderTable();
+                updateStats();
+                barcodeInput.focus();
+            } else {
+                importSection.classList.remove('hidden');
+            }
+
             listenToRoom(room);
         });
 
@@ -406,149 +433,4 @@
         function processBarcode(code) {
             const cleanCode = code.toLowerCase();
             const matchingItems = excelData.filter(item => {
-                const itemCode = String(item.code || '').trim().toLowerCase();
-                if (!itemCode) return false;
-                return itemCode === cleanCode || itemCode.includes(cleanCode) || cleanCode.includes(itemCode);
-            });
-
-            if (matchingItems.length > 0) {
-                const foundItem = matchingItems[0];
-
-                if (foundItem.isCanceled) {
-                    playCanceledSound();
-                    setFeedback(code, `❌ ALERTA: PEDIDO CANCELADO!`, 'red', foundItem.product, foundItem.qty);
-                    return;
-                }
-
-                if (matchingItems.length > 1) {
-                    playErrorSound();
-                    setFeedback(code, `⚠️ ERRO: Etiqueta duplicada!`, 'red', foundItem.product, foundItem.qty);
-                    return;
-                }
-
-                if (foundItem.status === 'Conferido') {
-                    playErrorSound();
-                    setFeedback(code, `Já conferido anteriormente!`, 'amber', foundItem.product, foundItem.qty);
-                } else {
-                    foundItem.status = 'Conferido';
-                    playSuccessSound();
-                    setFeedback(code, `Conferido com sucesso!`, 'emerald', foundItem.product, foundItem.qty);
-                    saveToCloud();
-                }
-            } else {
-                playErrorSound();
-                setFeedback(code, `Não encontrado na planilha!`, 'red', 'N/A', '-');
-            }
-
-            renderTable();
-            updateStats();
-        }
-
-        function setFeedback(code, message, color, product, qty) {
-            lastScannedCodeText.textContent = code;
-            lastScanStatusText.textContent = message;
-            lastScanProductInfo.textContent = `Produto: ${product}`;
-            lastScanQtyInfo.textContent = `Quantidade: ${qty}`;
-            
-            lastScanFeedback.className = "w-full lg:w-[380px] px-4 py-3.5 rounded-2xl border text-left transition-all duration-200 shadow-inner";
-            if (color === 'emerald') {
-                lastScanFeedback.classList.add('bg-emerald-950/40', 'border-emerald-500');
-                lastScanStatusText.className = "text-xs font-bold text-emerald-400";
-            } else if (color === 'amber') {
-                lastScanFeedback.classList.add('bg-amber-950/40', 'border-amber-500');
-                lastScanStatusText.className = "text-xs font-bold text-amber-400";
-            } else if (color === 'red') {
-                lastScanFeedback.classList.add('bg-red-950/40', 'border-red-500');
-                lastScanStatusText.className = "text-xs font-bold text-red-400";
-            }
-        }
-
-        function renderTable() {
-            tableBody.innerHTML = '';
-            const filteredData = excelData.filter(item => {
-                if (currentFilter === 'pending') return !item.isCanceled && item.status === 'Pendente';
-                if (currentFilter === 'checked') return !item.isCanceled && item.status === 'Conferido';
-                if (currentFilter === 'canceled') return item.isCanceled;
-                return true;
-            });
-
-            filteredData.forEach((item) => {
-                const tr = document.createElement('tr');
-                const isCanceled = item.isCanceled;
-                const isConferido = item.status === 'Conferido';
-
-                if (isCanceled) tr.className = 'bg-red-950/20 hover:bg-red-950/40 transition-colors border-l-4 border-red-500';
-                else if (isConferido) tr.className = 'bg-emerald-950/20 hover:bg-emerald-950/30 transition-colors';
-                else tr.className = 'hover:bg-zinc-800/40 transition-colors';
-
-                let statusBadge = '';
-                if (isCanceled) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20"><i data-lucide="ban" class="w-3.5 h-3.5"></i> Cancelado</span>`;
-                else if (isConferido) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Pronto</span>`;
-                else statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Pendente</span>`;
-
-                tr.innerHTML = `
-                    <td class="p-4">${statusBadge}</td>
-                    <td class="p-4 font-mono font-bold text-orange-400">${item.code}</td>
-                    <td class="p-4 text-zinc-200 font-medium max-w-xs truncate" title="${item.product}">${item.product}</td>
-                    <td class="p-4 font-bold text-amber-400">${item.qty}</td>
-                    <td class="p-4 text-right">
-                        <button onclick="toggleManualCheck('${item.code}')" class="text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-xl border border-zinc-700 transition font-medium">
-                            Alternar
-                        </button>
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-            });
-            lucide.createIcons();
-        }
-
-        window.toggleManualCheck = function(code) {
-            const item = excelData.find(i => String(i.code).trim() === String(code).trim());
-            if (item) {
-                if (item.isCanceled) alert("Atenção: Este pedido está marcado como cancelado na planilha!");
-                item.status = item.status === 'Conferido' ? 'Pendente' : 'Conferido';
-                saveToCloud();
-                renderTable();
-                updateStats();
-            }
-        };
-
-        function updateStats() {
-            const total = excelData.length;
-            const conferidos = excelData.filter(i => !i.isCanceled && i.status === 'Conferido').length;
-            const cancelados = excelData.filter(i => i.isCanceled).length;
-            const pendentes = total - conferidos - cancelados;
-
-            document.getElementById('totalCount').textContent = total;
-            document.getElementById('conferidosCount').textContent = conferidos;
-            document.getElementById('pendentesCount').textContent = pendentes;
-        }
-
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.filter-btn').forEach(b => {
-                    b.classList.remove('bg-orange-600', 'text-white', 'shadow-sm');
-                    b.classList.add('bg-transparent', 'text-zinc-400');
-                });
-                e.target.classList.remove('bg-transparent', 'text-zinc-400');
-                e.target.classList.add('bg-orange-600', 'text-white', 'shadow-sm');
-                currentFilter = e.target.dataset.filter;
-                renderTable();
-            });
-        });
-
-        document.getElementById('btnExport').addEventListener('click', () => {
-            const exportData = excelData.map(row => ({
-                'Etiqueta / Rastreio': row.code,
-                'Produto': row.product,
-                'Quantidade': row.qty,
-                'Status Conferência': row.isCanceled ? 'CANCELADO' : row.status
-            }));
-            const worksheet = XLSX.utils.json_to_sheet(exportData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
-            XLSX.writeFile(workbook, `ScanCheck_${new Date().toISOString().slice(0,10)}.xlsx`);
-        });
-    </script>
-</body>
-</html>
+                const itemCode = String(item.code || '').
