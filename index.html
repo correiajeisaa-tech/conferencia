@@ -68,20 +68,13 @@
                 </div>
                 
                 <!-- Botões de Ação na Barra Superior -->
-                <div class="flex items-center gap-2 ml-2 flex-wrap justify-center">
+                <div class="flex items-center gap-2 ml-2">
                     <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md">
                         <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar
                     </button>
-                    
-                    <label for="fileInputTop" class="cursor-pointer bg-orange-600 hover:bg-orange-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md" title="Somar outra planilha">
-                        <i data-lucide="file-plus" class="w-3.5 h-3.5"></i> Adicionar Planilha
-                    </label>
-                    <input type="file" id="fileInputTop" accept=".xlsx, .xls, .csv" class="hidden">
-
-                    <button id="btnDeleteSheet" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md" title="Excluir tudo e começar do zero">
-                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Excluir Tudo
+                    <button id="btnDeleteSheet" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md" title="Excluir Planilha Atual e Adicionar Outra">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Excluir Planilha
                     </button>
-                    
                     <button id="btnChangeRoom" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs px-2.5 py-2 rounded-xl transition flex items-center gap-1 font-semibold" title="Mudar de Sala">
                         <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Sair
                     </button>
@@ -110,7 +103,7 @@
             </div>
         </section>
 
-        <!-- Passo 1: Importar Arquivo Inicial -->
+        <!-- Passo 1: Importar Arquivo / Gerenciar Planilha -->
         <section id="importSection" class="hidden bg-zinc-900 rounded-3xl border border-zinc-800 p-8 text-center shadow-xl max-w-xl mx-auto mt-6">
             <div class="space-y-4">
                 <div class="flex justify-between items-center mb-4 pb-3 border-b border-zinc-800">
@@ -122,8 +115,8 @@
                 <div class="w-16 h-16 bg-zinc-800 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner">
                     <i data-lucide="file-spreadsheet" class="w-8 h-8"></i>
                 </div>
-                <h2 class="text-xl font-bold">Carregar Planilha de Encomendas</h2>
-                <p class="text-sm text-zinc-400">Suba o arquivo Excel ou CSV oficial para iniciar a conferência nesta sala.</p>
+                <h2 class="text-xl font-bold">Gerenciar Planilha da Sala</h2>
+                <p class="text-sm text-zinc-400">Suba o arquivo Excel ou CSV oficial para iniciar ou substituir a planilha atual.</p>
                 
                 <div class="pt-3">
                     <label for="fileInput" class="cursor-pointer bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-3.5 rounded-2xl inline-flex items-center gap-2 shadow-lg shadow-orange-600/25 transition">
@@ -176,7 +169,7 @@
                         <thead class="bg-zinc-950/80 text-zinc-400 uppercase text-[11px] tracking-wider sticky top-0 backdrop-blur-md">
                             <tr>
                                 <th class="p-4">Status</th>
-                                <th class="p-4">Etiqueta / Rastreio & Pedido</th>
+                                <th class="p-4">Etiqueta / Rastreio</th>
                                 <th class="p-4">Produto / Descrição</th>
                                 <th class="p-4">Qtd</th>
                                 <th class="p-4 text-right">Ação</th>
@@ -235,7 +228,6 @@
         const roomBadgeImport = document.getElementById('roomBadgeImport');
         const roomStatusText = document.getElementById('roomStatusText');
         const fileInput = document.getElementById('fileInput');
-        const fileInputTop = document.getElementById('fileInputTop');
         const barcodeInput = document.getElementById('barcodeInput');
         const tableBody = document.getElementById('tableBody');
         const lastScanFeedback = document.getElementById('lastScanFeedback');
@@ -346,7 +338,7 @@
         btnChangeRoom.addEventListener('click', voltarParaSala);
 
         btnDeleteSheet.addEventListener('click', () => {
-            if (confirm("Deseja excluir todos os dados atuais desta sala e começar do zero?")) {
+            if (confirm("Deseja excluir a planilha atual desta sala para adicionar uma nova?")) {
                 excelData = [];
                 saveToCloud();
                 scanWorkflow.classList.add('hidden');
@@ -387,8 +379,10 @@
             });
         }
 
-        // Leitor estrito focado unicamente na coluna de código de barras oficial / rastreio
-        function processExcelFile(file, isAppending = false) {
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
             const reader = new FileReader();
             reader.onload = (evt) => {
                 try {
@@ -405,7 +399,7 @@
                     let headerRowIndex = 0;
                     for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
                         const rowStr = JSON.stringify(rawJson[i]).toLowerCase();
-                        if (rowStr.includes('rastreamento') || rowStr.includes('rastreio') || rowStr.includes('etiqueta') || rowStr.includes('tracking') || rowStr.includes('shipping') || rowStr.includes('código de barras') || rowStr.includes('código')) {
+                        if (rowStr.includes('rastreamento') || rowStr.includes('rastreio') || rowStr.includes('etiqueta') || rowStr.includes('tracking') || rowStr.includes('shipping') || rowStr.includes('pedido')) {
                             headerRowIndex = i;
                             break;
                         }
@@ -416,7 +410,7 @@
 
                     headers.forEach((h, idx) => {
                         const lower = String(h || '').toLowerCase();
-                        if (codeColIdx === -1 && (lower.includes('rastreio') || lower.includes('rastreamento') || lower.includes('etiqueta') || lower.includes('tracking') || lower.includes('shipping') || lower.includes('código de barras'))) {
+                        if (codeColIdx === -1 && (lower.includes('rastreio') || lower.includes('rastreamento') || lower.includes('etiqueta') || lower.includes('tracking') || lower.includes('shipping'))) {
                             codeColIdx = idx;
                         }
                         if (orderColIdx === -1 && (lower.includes('pedido') || lower.includes('order') || lower.includes('nº'))) {
@@ -440,8 +434,13 @@
                         let codeVal = String(rowCols[codeColIdx] || '').trim();
                         let orderVal = orderColIdx !== -1 ? String(rowCols[orderColIdx] || '').trim() : '';
 
+                        // Validação aprimorada para capturar códigos reais (incluindo rastreios com final BR dos Correios e etiquetas padrão)
                         if (!codeVal || codeVal.length < 5 || codeVal.length > 40 || codeVal.toLowerCase().includes('o pacote não estava')) {
-                            continue;
+                            if (orderVal && orderVal.length >= 5) {
+                                codeVal = orderVal;
+                            } else {
+                                continue;
+                            }
                         }
 
                         const prodVal = prodColIdx !== -1 && rowCols[prodColIdx] ? String(rowCols[prodColIdx]).trim() : 'Produto não informado';
@@ -466,16 +465,11 @@
                     }
 
                     if (newItems.length === 0) {
-                        alert("Não foram encontrados códigos de barras ou etiquetas válidos na planilha.");
+                        alert("Não foram encontrados códigos de etiqueta válidos na planilha.");
                         return;
                     }
 
-                    if (isAppending) {
-                        excelData = excelData.concat(newItems);
-                    } else {
-                        excelData = newItems;
-                    }
-
+                    excelData = newItems;
                     saveToCloud();
                     importSection.classList.add('hidden');
                     scanWorkflow.classList.remove('hidden');
@@ -483,7 +477,6 @@
                     renderTable();
                     updateStats();
                     fileInput.value = '';
-                    fileInputTop.value = '';
                     barcodeInput.focus();
 
                 } catch(err) {
@@ -492,18 +485,6 @@
                 }
             };
             reader.readAsArrayBuffer(file);
-        }
-
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files[0]) processExcelFile(e.target.files[0], false);
-        });
-
-        fileInputTop.addEventListener('change', (e) => {
-            if (e.target.files[0]) {
-                if (confirm("Deseja somar os pedidos desta nova planilha junto com os que já estão na sala?")) {
-                    processExcelFile(e.target.files[0], true);
-                }
-            }
         });
 
         document.addEventListener('click', (e) => {
@@ -606,19 +587,14 @@
                 else if (isConferido) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Pronto</span>`;
                 else statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Pendente</span>`;
 
-                let codeDisplay = `<span class="font-mono font-bold text-orange-400">${item.code}</span>`;
-                if (item.order && item.order !== item.code) {
-                    codeDisplay += `<span class="block text-[11px] text-zinc-400 font-mono">Pedido: ${item.order}</span>`;
-                }
-
                 tr.innerHTML = `
                     <td class="p-4">${statusBadge}</td>
-                    <td class="p-4">${codeDisplay}</td>
+                    <td class="p-4 font-mono font-bold text-orange-400">${item.code}</td>
                     <td class="p-4 text-zinc-200 font-medium max-w-xs truncate" title="${item.product}">${item.product}</td>
                     <td class="p-4 font-bold text-amber-400">${item.qty}</td>
                     <td class="p-4 text-right">
-                        <button onclick="toggleManualCheck('${item.code.replace(/'/g, "\\'")}')" class="text-xs text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-xl border border-zinc-700 transition font-medium shadow-sm">
-                            Check Manual
+                        <button onclick="toggleManualCheck('${item.code}')" class="text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-xl border border-zinc-700 transition font-medium">
+                            Alternar
                         </button>
                     </td>
                 `;
@@ -627,19 +603,14 @@
             lucide.createIcons();
         }
 
-        // Função de Check Manual corrigida e garantida
         window.toggleManualCheck = function(code) {
             const item = excelData.find(i => String(i.code).trim() === String(code).trim());
             if (item) {
-                if (item.isCanceled) {
-                    alert("Atenção: Este pedido está marcado como cancelado na planilha!");
-                }
+                if (item.isCanceled) alert("Atenção: Este pedido está marcado como cancelado na planilha!");
                 item.status = item.status === 'Conferido' ? 'Pendente' : 'Conferido';
                 saveToCloud();
                 renderTable();
                 updateStats();
-            } else {
-                console.error("Item não encontrado para check manual:", code);
             }
         };
 
@@ -676,7 +647,6 @@
             try {
                 const exportData = excelData.map(row => ({
                     'Etiqueta / Rastreio': row.code,
-                    'Número do Pedido': row.order || '',
                     'Produto': row.product,
                     'Quantidade': row.qty,
                     'Status Conferência': row.isCanceled ? 'CANCELADO' : row.status
