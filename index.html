@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conferência de Etiquetas - Mercado Livre & Shopee</title>
+    <title>ScanCheck - Conferência de Encomendas</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS para ler e exportar arquivos Excel/CSV -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -15,49 +18,50 @@
             animation: pulse-border 1.5s infinite;
         }
         @keyframes pulse-border {
-            0% { border-color: rgba(59, 130, 246, 0.5); }
-            50% { border-color: rgba(59, 130, 246, 1); }
-            100% { border-color: rgba(59, 130, 246, 0.5); }
+            0% { border-color: rgba(249, 115, 22, 0.4); }
+            50% { border-color: rgba(249, 115, 22, 1); }
+            100% { border-color: rgba(249, 115, 22, 0.4); }
         }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
+<body class="bg-zinc-950 text-zinc-100 min-h-screen font-sans">
 
     <!-- Header -->
-    <header class="bg-slate-800 border-b border-slate-700 p-4 sticky top-0 z-50">
+    <header class="bg-zinc-900 border-b border-zinc-800 p-4 sticky top-0 z-50 shadow-lg">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
-                <div class="bg-amber-500 p-2 rounded-lg text-slate-900">
-                    <i data-lucide="package-check" class="w-7 h-7"></i>
+                <div class="bg-orange-600 p-2.5 rounded-xl text-white shadow-md shadow-orange-600/20">
+                    <i data-lucide="scan-line" class="w-6 h-6"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold text-white">Conferência de Encomendas</h1>
-                    <p class="text-xs text-slate-400">Mercado Livre & Shopee Expedição</p>
+                    <h1 class="text-xl font-black tracking-wide text-white flex items-center gap-2">
+                        SCAN<span class="text-orange-500 font-light">CHECK</span>
+                    </h1>
+                    <p class="text-[11px] text-zinc-400 font-medium tracking-wider uppercase">Expedição & Conferência Mercado Livre e Shopee</p>
                 </div>
             </div>
 
-            <!-- Placar de Status -->
-            <div id="statsBar" class="hidden flex items-center gap-4 bg-slate-900 px-4 py-2 rounded-xl border border-slate-700">
-                <div class="text-center">
-                    <span class="text-xs text-slate-400 block">Total</span>
-                    <span id="totalCount" class="text-lg font-bold text-slate-200">0</span>
+            <!-- Placar de Status & Sala Ativa -->
+            <div id="statsBar" class="hidden flex items-center gap-3 bg-zinc-950 px-4 py-2 rounded-2xl border border-zinc-800 shadow-inner">
+                <span id="roomBadge" class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2.5 py-1 rounded-xl font-mono font-bold">Sala: -</span>
+                <div class="h-6 w-px bg-zinc-800"></div>
+                <div class="text-center px-1">
+                    <span class="text-[10px] text-zinc-500 uppercase tracking-wider block font-bold">Total</span>
+                    <span id="totalCount" class="text-sm font-black text-zinc-200">0</span>
                 </div>
-                <div class="h-8 w-px bg-slate-700"></div>
-                <div class="text-center">
-                    <span class="text-xs text-emerald-400 block">Conferidos</span>
-                    <span id="conferidosCount" class="text-lg font-bold text-emerald-400">0</span>
+                <div class="text-center px-1">
+                    <span class="text-[10px] text-emerald-500 uppercase tracking-wider block font-bold">Prontos</span>
+                    <span id="conferidosCount" class="text-sm font-black text-emerald-400">0</span>
                 </div>
-                <div class="h-8 w-px bg-slate-700"></div>
-                <div class="text-center">
-                    <span class="text-xs text-amber-400 block">Pendentes</span>
-                    <span id="pendentesCount" class="text-lg font-bold text-amber-400">0</span>
+                <div class="text-center px-1">
+                    <span class="text-[10px] text-amber-500 uppercase tracking-wider block font-bold">Falta</span>
+                    <span id="pendentesCount" class="text-sm font-black text-amber-400">0</span>
                 </div>
-                <div class="h-8 w-px bg-slate-700"></div>
-                <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition">
-                    <i data-lucide="download" class="w-4 h-4"></i> Exportar
+                <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md ml-2">
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar
                 </button>
-                <button id="btnReset" class="bg-red-600/80 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1 transition" title="Nova conferência">
-                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Nova
+                <button id="btnChangeRoom" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs px-2.5 py-2 rounded-xl transition" title="Mudar de Sala">
+                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
                 </button>
             </div>
         </div>
@@ -65,104 +69,90 @@
 
     <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
 
-        <!-- Passo 1: Importar Arquivo ou Inserir Código -->
-        <section id="importSection" class="bg-slate-800 rounded-2xl border border-slate-700 p-6 md:p-8">
-            <div class="max-w-xl mx-auto space-y-6">
-                <!-- Opção A: Carregar no PC -->
-                <div class="text-center space-y-3 pb-6 border-b border-slate-700">
-                    <div class="w-14 h-14 bg-slate-700 text-blue-400 rounded-full flex items-center justify-center mx-auto">
-                        <i data-lucide="file-up" class="w-7 h-7"></i>
-                    </div>
-                    <h2 class="text-lg font-bold">1. Carregar Planilha (Computador)</h2>
-                    <p class="text-xs text-slate-400">Importe a planilha do ML ou Shopee para gerar o código de sincronização.</p>
-                    <div>
-                        <label for="fileInput" class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-medium px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-lg transition text-sm">
-                            <i data-lucide="upload" class="w-4 h-4"></i> Selecionar Planilha
-                        </label>
-                        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
-                    </div>
-                </div>
+        <!-- Passo 0: Tela de Identificação da Sala -->
+        <section id="roomSection" class="bg-zinc-900/90 backdrop-blur-md rounded-3xl border border-zinc-800 p-8 max-w-md mx-auto text-center space-y-6 mt-12 shadow-2xl">
+            <div class="w-16 h-16 bg-orange-600/10 text-orange-500 rounded-2xl flex items-center justify-center mx-auto border border-orange-500/20 shadow-inner">
+                <i data-lucide="radio" class="w-8 h-8"></i>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold text-white">Conectar à Sala de Expedição</h2>
+                <p class="text-xs text-zinc-400 mt-1">Digite o mesmo nome de sala no computador e no coletor para sincronizar.</p>
+            </div>
+            <div class="space-y-3">
+                <input type="text" id="roomInput" placeholder="Ex: 01" autocomplete="off" class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl px-4 py-3.5 text-center text-lg font-mono text-orange-400 placeholder-zinc-700 focus:outline-none focus:border-orange-500 shadow-inner">
+                <button id="btnJoinRoom" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3.5 rounded-2xl transition shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2">
+                    <i data-lucide="zap" class="w-4 h-4"></i> Entrar na Sala
+                </button>
+            </div>
+        </section>
 
-                <!-- Opção B: Resgatar no Coletor -->
-                <div class="text-center space-y-3 pt-2">
-                    <div class="w-14 h-14 bg-slate-700 text-emerald-400 rounded-full flex items-center justify-center mx-auto">
-                        <i data-lucide="key-round" class="w-7 h-7"></i>
-                    </div>
-                    <h2 class="text-lg font-bold">2. Sincronizar no Coletor</h2>
-                    <p class="text-xs text-slate-400">Cole abaixo o código gerado no computador para carregar os dados instantaneamente.</p>
-                    <div class="flex gap-2">
-                        <input type="text" id="syncCodeInput" placeholder="Cole o código de sincronização aqui..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
-                        <button id="btnLoadSync" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-1">
-                            <i data-lucide="check" class="w-4 h-4"></i> Carregar
-                        </button>
-                    </div>
+        <!-- Passo 1: Importar Arquivo -->
+        <section id="importSection" class="hidden bg-zinc-900 rounded-3xl border border-zinc-800 p-8 text-center shadow-xl">
+            <div class="max-w-xl mx-auto space-y-4">
+                <div class="w-16 h-16 bg-zinc-800 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner">
+                    <i data-lucide="file-spreadsheet" class="w-8 h-8"></i>
+                </div>
+                <h2 class="text-xl font-bold">Carregar Planilha de Encomendas</h2>
+                <p class="text-sm text-zinc-400">Suba o arquivo do Mercado Livre ou Shopee para enviar à nuvem instantaneamente.</p>
+                
+                <div class="pt-3">
+                    <label for="fileInput" class="cursor-pointer bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-3.5 rounded-2xl inline-flex items-center gap-2 shadow-lg shadow-orange-600/25 transition">
+                        <i data-lucide="upload-cloud" class="w-5 h-5"></i> Selecionar Planilha Excel/CSV
+                    </label>
+                    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
                 </div>
             </div>
         </section>
 
-        <!-- Modal / Caixa do Código Gerado -->
-        <div id="codeModal" class="hidden bg-slate-800 border-2 border-emerald-500/50 p-6 rounded-2xl space-y-3">
-            <h3 class="font-bold text-emerald-400 flex items-center gap-2">
-                <i data-lucide="check-circle-2" class="w-5 h-5"></i> Planilha Pronta para o Coletor!
-            </h3>
-            <p class="text-xs text-slate-300">Copie o código abaixo e cole no campo de sincronização do coletor de dados:</p>
-            <div class="flex gap-2">
-                <textarea id="generatedCodeBox" readonly class="w-full h-20 bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-300 focus:outline-none"></textarea>
-                <button id="btnCopyCode" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 rounded-xl transition text-xs flex flex-col items-center justify-center gap-1">
-                    <i data-lucide="copy" class="w-5 h-5"></i> Copiar
-                </button>
-            </div>
-        </div>
-
         <!-- Passo 2: Campo de Bipagem e Tabela -->
         <div id="scanWorkflow" class="hidden space-y-6">
             <!-- Campo Principal de Bipagem -->
-            <section class="bg-slate-800 rounded-2xl border-2 border-blue-500 p-6 scan-pulse shadow-xl">
+            <section class="bg-zinc-900 rounded-3xl border-2 border-orange-500/60 p-6 scan-pulse shadow-2xl">
                 <div class="flex flex-col lg:flex-row items-center gap-4">
                     <div class="relative flex-1 w-full">
-                        <i data-lucide="scan-barcode" class="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                        <input type="text" id="barcodeInput" placeholder="Bipe o código de barras ou digite o rastreio aqui..." autocomplete="off" autofocus class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-slate-500 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20">
+                        <i data-lucide="scan-barcode" class="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-orange-500"></i>
+                        <input type="text" id="barcodeInput" placeholder="Bipe o código de barras ou digite o rastreio..." autocomplete="off" autofocus class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 shadow-inner">
                     </div>
                     <!-- Destaque do Último Bipado -->
-                    <div id="lastScanFeedback" class="w-full lg:w-[380px] px-4 py-3 rounded-xl border border-slate-700 bg-slate-900 text-left">
-                        <div class="flex justify-between items-center border-b border-slate-800 pb-1 mb-1">
-                            <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Último Bipado</span>
-                            <span id="lastScanStatusText" class="text-xs font-semibold">Aguardando...</span>
+                    <div id="lastScanFeedback" class="w-full lg:w-[380px] px-4 py-3.5 rounded-2xl border border-zinc-800 bg-zinc-950 text-left shadow-inner">
+                        <div class="flex justify-between items-center border-b border-zinc-800/80 pb-1 mb-1.5">
+                            <span class="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Último Bipado</span>
+                            <span id="lastScanStatusText" class="text-xs font-bold">Aguardando...</span>
                         </div>
-                        <div class="text-xs text-slate-400">Etiqueta/Rastreio:</div>
-                        <span id="lastScannedCodeText" class="block text-sm font-mono font-bold text-blue-400 truncate">Nenhum</span>
-                        <div id="lastScanProductInfo" class="mt-1 text-xs text-slate-200 truncate font-medium">Produto: -</div>
-                        <div id="lastScanQtyInfo" class="text-xs text-amber-300 font-semibold">Qtd: -</div>
+                        <div class="text-[11px] text-zinc-500 font-medium">Etiqueta:</div>
+                        <span id="lastScannedCodeText" class="block text-sm font-mono font-bold text-orange-400 truncate">Nenhum</span>
+                        <div id="lastScanProductInfo" class="mt-1 text-xs text-zinc-200 truncate font-semibold">Produto: -</div>
+                        <div id="lastScanQtyInfo" class="text-xs text-amber-400 font-bold">Qtd: -</div>
                     </div>
                 </div>
             </section>
 
             <!-- Tabela de Itens -->
-            <section class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-                <div class="p-4 border-b border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <h3 class="font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="list" class="w-5 h-5 text-blue-400"></i> Lista de Encomendas
+            <section class="bg-zinc-900 rounded-3xl border border-zinc-800 overflow-hidden shadow-xl">
+                <div class="p-4 md:p-5 border-b border-zinc-800 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <h3 class="font-bold text-zinc-200 flex items-center gap-2">
+                        <i data-lucide="layers" class="w-5 h-5 text-orange-500"></i> Fila de Conferência Simultânea
                     </h3>
-                    <div class="flex gap-2">
-                        <button class="filter-btn active bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium" data-filter="all">Todos</button>
-                        <button class="filter-btn bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-slate-600" data-filter="pending">Pendentes</button>
-                        <button class="filter-btn bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-slate-600" data-filter="checked">Conferidos</button>
-                        <button class="filter-btn bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg font-medium hover:bg-slate-600" data-filter="canceled">Cancelados</button>
+                    <div class="flex gap-1.5 bg-zinc-950 p-1 rounded-2xl border border-zinc-800">
+                        <button class="filter-btn active bg-orange-600 text-white text-xs px-3.5 py-1.5 rounded-xl font-bold transition shadow-sm" data-filter="all">Todos</button>
+                        <button class="filter-btn bg-transparent text-zinc-400 text-xs px-3.5 py-1.5 rounded-xl font-medium hover:text-white transition" data-filter="pending">Pendentes</button>
+                        <button class="filter-btn bg-transparent text-zinc-400 text-xs px-3.5 py-1.5 rounded-xl font-medium hover:text-white transition" data-filter="checked">Prontos</button>
+                        <button class="filter-btn bg-transparent text-zinc-400 text-xs px-3.5 py-1.5 rounded-xl font-medium hover:text-white transition" data-filter="canceled">Cancelados</button>
                     </div>
                 </div>
 
                 <div class="overflow-x-auto max-h-[500px]">
                     <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[11px] tracking-wider sticky top-0 backdrop-blur-sm">
+                        <thead class="bg-zinc-950/80 text-zinc-400 uppercase text-[11px] tracking-wider sticky top-0 backdrop-blur-md">
                             <tr>
-                                <th class="p-3.5">Status</th>
-                                <th class="p-3.5">Etiqueta / Rastreio</th>
-                                <th class="p-3.5">Produto / Descrição</th>
-                                <th class="p-3.5">Qtd</th>
-                                <th class="p-3.5 text-right">Ação</th>
+                                <th class="p-4">Status</th>
+                                <th class="p-4">Etiqueta / Rastreio</th>
+                                <th class="p-4">Produto / Descrição</th>
+                                <th class="p-4">Qtd</th>
+                                <th class="p-4 text-right">Ação</th>
                             </tr>
                         </thead>
-                        <tbody id="tableBody" class="divide-y divide-slate-700/50">
+                        <tbody id="tableBody" class="divide-y divide-zinc-800/60">
                         </tbody>
                     </table>
                 </div>
@@ -172,6 +162,12 @@
     </main>
 
     <script>
+        const firebaseConfig = {
+            projectId: "conferencia-expedicao-ml-shopee"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         lucide.createIcons();
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -192,25 +188,98 @@
         function playErrorSound() { playBeep(220, 'sawtooth', 0.25); setTimeout(() => playBeep(180, 'sawtooth', 0.3), 200); }
         function playCanceledSound() { playBeep(150, 'sawtooth', 0.3); setTimeout(() => playBeep(100, 'sawtooth', 0.4), 250); }
 
+        let currentRoom = '';
         let excelData = [];
         let currentFilter = 'all';
+        let unsubscribeFirestore = null;
 
-        const fileInput = document.getElementById('fileInput');
+        const roomSection = document.getElementById('roomSection');
         const importSection = document.getElementById('importSection');
-        const codeModal = document.getElementById('codeModal');
-        const generatedCodeBox = document.getElementById('generatedCodeBox');
-        const btnCopyCode = document.getElementById('btnCopyCode');
-        const syncCodeInput = document.getElementById('syncCodeInput');
-        const btnLoadSync = document.getElementById('btnLoadSync');
         const scanWorkflow = document.getElementById('scanWorkflow');
+        const statsBar = document.getElementById('statsBar');
+        const roomInput = document.getElementById('roomInput');
+        const btnJoinRoom = document.getElementById('btnJoinRoom');
+        const btnChangeRoom = document.getElementById('btnChangeRoom');
+        const roomBadge = document.getElementById('roomBadge');
+        const fileInput = document.getElementById('fileInput');
         const barcodeInput = document.getElementById('barcodeInput');
         const tableBody = document.getElementById('tableBody');
-        const statsBar = document.getElementById('statsBar');
         const lastScanFeedback = document.getElementById('lastScanFeedback');
         const lastScannedCodeText = document.getElementById('lastScannedCodeText');
         const lastScanStatusText = document.getElementById('lastScanStatusText');
         const lastScanProductInfo = document.getElementById('lastScanProductInfo');
         const lastScanQtyInfo = document.getElementById('lastScanQtyInfo');
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedRoom = localStorage.getItem('scancheck_room');
+            if (savedRoom) {
+                roomInput.value = savedRoom;
+            }
+        });
+
+        btnJoinRoom.addEventListener('click', () => {
+            const room = roomInput.value.trim().toLowerCase();
+            if (!room) {
+                alert("Digite o nome da sala!");
+                return;
+            }
+            currentRoom = room;
+            localStorage.setItem('scancheck_room', room);
+            roomBadge.textContent = `Sala: ${room}`;
+
+            roomSection.classList.add('hidden');
+            listenToRoom(room);
+        });
+
+        btnChangeRoom.addEventListener('click', () => {
+            if (unsubscribeFirestore) unsubscribeFirestore();
+            localStorage.removeItem('scancheck_room');
+            scanWorkflow.classList.add('hidden');
+            importSection.classList.add('hidden');
+            statsBar.classList.add('hidden');
+            roomSection.classList.remove('hidden');
+        });
+
+        function listenToRoom(room) {
+            if (unsubscribeFirestore) unsubscribeFirestore();
+
+            unsubscribeFirestore = db.collection('salas').doc(room).onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    excelData = data.items || [];
+
+                    if (excelData.length > 0) {
+                        importSection.classList.add('hidden');
+                        scanWorkflow.classList.remove('hidden');
+                        statsBar.classList.remove('hidden');
+                        renderTable();
+                        updateStats();
+                        barcodeInput.focus();
+                    } else {
+                        scanWorkflow.classList.add('hidden');
+                        statsBar.classList.add('hidden');
+                        importSection.classList.remove('hidden');
+                    }
+                } else {
+                    db.collection('salas').doc(room).set({ items: [] }).catch(e => console.log(e));
+                    scanWorkflow.classList.add('hidden');
+                    statsBar.classList.add('hidden');
+                    importSection.classList.remove('hidden');
+                }
+            }, (error) => {
+                console.error("Erro no Firestore:", error);
+            });
+        }
+
+        function saveToCloud() {
+            if (!currentRoom) return;
+            db.collection('salas').doc(currentRoom).set({
+                items: excelData,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).catch(err => {
+                console.error("Erro ao sincronizar com a nuvem:", err);
+            });
+        }
 
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -290,14 +359,7 @@
                     }
 
                     excelData = newItems;
-                    
-                    // Gera o código compactado para sincronização
-                    const jsonString = JSON.stringify(excelData);
-                    const compressedCode = btoa(encodeURIComponent(jsonString));
-                    
-                    generatedCodeBox.value = compressedCode;
-                    codeModal.classList.remove('hidden');
-
+                    saveToCloud();
                     importSection.classList.add('hidden');
                     scanWorkflow.classList.remove('hidden');
                     statsBar.classList.remove('hidden');
@@ -311,41 +373,6 @@
                 }
             };
             reader.readAsArrayBuffer(file);
-        });
-
-        btnCopyCode.addEventListener('click', () => {
-            generatedCodeBox.select();
-            document.execCommand('copy');
-            alert("Código de sincronização copiado com sucesso!");
-        });
-
-        btnLoadSync.addEventListener('click', () => {
-            const token = syncCodeInput.value.trim();
-            if (!token) {
-                alert("Cole o código de sincronização!");
-                return;
-            }
-
-            try {
-                const jsonString = decodeURIComponent(atob(token));
-                excelData = JSON.parse(jsonString);
-
-                if (!Array.isArray(excelData) || excelData.length === 0) {
-                    alert("Código inválido.");
-                    return;
-                }
-
-                importSection.classList.add('hidden');
-                codeModal.classList.add('hidden');
-                scanWorkflow.classList.remove('hidden');
-                statsBar.classList.remove('hidden');
-                renderTable();
-                updateStats();
-                barcodeInput.focus();
-            } catch(err) {
-                alert("Erro ao decodificar o código. Verifique se copiou inteiro.");
-                console.error(err);
-            }
         });
 
         document.addEventListener('click', (e) => {
@@ -393,6 +420,7 @@
                     foundItem.status = 'Conferido';
                     playSuccessSound();
                     setFeedback(code, `Conferido com sucesso!`, 'emerald', foundItem.product, foundItem.qty);
+                    saveToCloud();
                 }
             } else {
                 playErrorSound();
@@ -409,16 +437,16 @@
             lastScanProductInfo.textContent = `Produto: ${product}`;
             lastScanQtyInfo.textContent = `Quantidade: ${qty}`;
             
-            lastScanFeedback.className = "w-full lg:w-[380px] px-4 py-3 rounded-xl border text-left transition-all duration-200";
+            lastScanFeedback.className = "w-full lg:w-[380px] px-4 py-3.5 rounded-2xl border text-left transition-all duration-200 shadow-inner";
             if (color === 'emerald') {
-                lastScanFeedback.classList.add('bg-emerald-950/60', 'border-emerald-500');
-                lastScanStatusText.className = "text-xs font-semibold text-emerald-400";
+                lastScanFeedback.classList.add('bg-emerald-950/40', 'border-emerald-500');
+                lastScanStatusText.className = "text-xs font-bold text-emerald-400";
             } else if (color === 'amber') {
-                lastScanFeedback.classList.add('bg-amber-950/60', 'border-amber-500');
-                lastScanStatusText.className = "text-xs font-semibold text-amber-400";
+                lastScanFeedback.classList.add('bg-amber-950/40', 'border-amber-500');
+                lastScanStatusText.className = "text-xs font-bold text-amber-400";
             } else if (color === 'red') {
-                lastScanFeedback.classList.add('bg-red-950/60', 'border-red-500');
-                lastScanStatusText.className = "text-xs font-semibold text-red-400";
+                lastScanFeedback.classList.add('bg-red-950/40', 'border-red-500');
+                lastScanStatusText.className = "text-xs font-bold text-red-400";
             }
         }
 
@@ -436,22 +464,22 @@
                 const isCanceled = item.isCanceled;
                 const isConferido = item.status === 'Conferido';
 
-                if (isCanceled) tr.className = 'bg-red-950/30 hover:bg-red-900/40 transition-colors border-l-4 border-red-500';
-                else if (isConferido) tr.className = 'bg-emerald-950/20 hover:bg-emerald-900/30 transition-colors';
-                else tr.className = 'hover:bg-slate-700/30 transition-colors';
+                if (isCanceled) tr.className = 'bg-red-950/20 hover:bg-red-950/40 transition-colors border-l-4 border-red-500';
+                else if (isConferido) tr.className = 'bg-emerald-950/20 hover:bg-emerald-950/30 transition-colors';
+                else tr.className = 'hover:bg-zinc-800/40 transition-colors';
 
                 let statusBadge = '';
-                if (isCanceled) statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20"><i data-lucide="ban" class="w-3.5 h-3.5"></i> Cancelado</span>`;
-                else if (isConferido) statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Conferido</span>`;
-                else statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Pendente</span>`;
+                if (isCanceled) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20"><i data-lucide="ban" class="w-3.5 h-3.5"></i> Cancelado</span>`;
+                else if (isConferido) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Pronto</span>`;
+                else statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Pendente</span>`;
 
                 tr.innerHTML = `
-                    <td class="p-3.5">${statusBadge}</td>
-                    <td class="p-3.5 font-mono font-bold text-blue-400">${item.code}</td>
-                    <td class="p-3.5 text-slate-200 font-medium max-w-xs truncate" title="${item.product}">${item.product}</td>
-                    <td class="p-3.5 font-bold text-amber-400">${item.qty}</td>
-                    <td class="p-3.5 text-right">
-                        <button onclick="toggleManualCheck('${item.code}')" class="text-xs text-slate-400 hover:text-white bg-slate-700/50 hover:bg-slate-700 px-2 py-1 rounded border border-slate-600 transition">
+                    <td class="p-4">${statusBadge}</td>
+                    <td class="p-4 font-mono font-bold text-orange-400">${item.code}</td>
+                    <td class="p-4 text-zinc-200 font-medium max-w-xs truncate" title="${item.product}">${item.product}</td>
+                    <td class="p-4 font-bold text-amber-400">${item.qty}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="toggleManualCheck('${item.code}')" class="text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-xl border border-zinc-700 transition font-medium">
                             Alternar
                         </button>
                     </td>
@@ -466,6 +494,7 @@
             if (item) {
                 if (item.isCanceled) alert("Atenção: Este pedido está marcado como cancelado na planilha!");
                 item.status = item.status === 'Conferido' ? 'Pendente' : 'Conferido';
+                saveToCloud();
                 renderTable();
                 updateStats();
             }
@@ -479,17 +508,17 @@
 
             document.getElementById('totalCount').textContent = total;
             document.getElementById('conferidosCount').textContent = conferidos;
-            document.getElementById('pendentesCount').textContent, document.getElementById('pendentesCount').textContent = pendentes;
+            document.getElementById('pendentesCount').textContent = pendentes;
         }
 
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.filter-btn').forEach(b => {
-                    b.classList.remove('bg-blue-600', 'text-white');
-                    b.classList.add('bg-slate-700', 'text-slate-300');
+                    b.classList.remove('bg-orange-600', 'text-white', 'shadow-sm');
+                    b.classList.add('bg-transparent', 'text-zinc-400');
                 });
-                e.target.classList.remove('bg-slate-700', 'text-slate-300');
-                e.target.classList.add('bg-blue-600', 'text-white');
+                e.target.classList.remove('bg-transparent', 'text-zinc-400');
+                e.target.classList.add('bg-orange-600', 'text-white', 'shadow-sm');
                 currentFilter = e.target.dataset.filter;
                 renderTable();
             });
@@ -505,13 +534,7 @@
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
-            XLSX.writeFile(workbook, `Conferencia_Etiquetas_${new Date().toISOString().slice(0,10)}.xlsx`);
-        });
-
-        document.getElementById('btnReset').addEventListener('click', () => {
-            if (confirm("Deseja iniciar uma nova conferência?")) {
-                location.reload();
-            }
+            XLSX.writeFile(workbook, `ScanCheck_${new Date().toISOString().slice(0,10)}.xlsx`);
         });
     </script>
 </body>
