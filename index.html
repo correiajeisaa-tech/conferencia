@@ -50,7 +50,7 @@
                 </div>
             </div>
 
-            <!-- Placar de Status & Sala Ativa (Sempre visível no topo quando conectado) -->
+            <!-- Placar de Status & Sala Ativa -->
             <div id="statsBar" class="hidden flex items-center gap-3 bg-zinc-950 px-4 py-2 rounded-2xl border border-zinc-800 shadow-inner flex-wrap justify-center">
                 <span id="roomBadge" class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2.5 py-1 rounded-xl font-mono font-bold">Sala: -</span>
                 <div class="h-6 w-px bg-zinc-800 hidden md:block"></div>
@@ -67,7 +67,7 @@
                     <span id="pendentesCount" class="text-sm font-black text-amber-400">0</span>
                 </div>
                 
-                <!-- Botões de Ação na Barra Superior (Incluindo Excluir/Nova Planilha) -->
+                <!-- Botões de Ação na Barra Superior -->
                 <div class="flex items-center gap-2 ml-2">
                     <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md">
                         <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar
@@ -134,7 +134,7 @@
                 <div class="flex flex-col lg:flex-row items-center gap-4">
                     <div class="relative flex-1 w-full">
                         <i data-lucide="scan-barcode" class="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-orange-500"></i>
-                        <input type="text" id="barcodeInput" placeholder="Bipe o código de barras ou digite o rastreio..." autocomplete="off" autofocus class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 shadow-inner">
+                        <input type="text" id="barcodeInput" placeholder="Bipe o código de barras, rastreio ou número do pedido..." autocomplete="off" autofocus class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 shadow-inner">
                     </div>
                     <!-- Destaque do Último Bipado -->
                     <div id="lastScanFeedback" class="w-full lg:w-[380px] px-4 py-3.5 rounded-2xl border border-zinc-800 bg-zinc-950 text-left shadow-inner">
@@ -236,7 +236,6 @@
         const lastScanProductInfo = document.getElementById('lastScanProductInfo');
         const lastScanQtyInfo = document.getElementById('lastScanQtyInfo');
 
-        // Reconexão automática e persistente ao atualizar a página (F5)
         window.addEventListener('DOMContentLoaded', async () => {
             const savedRoom = localStorage.getItem('scancheck_room');
             if (savedRoom) {
@@ -338,7 +337,6 @@
 
         btnChangeRoom.addEventListener('click', voltarParaSala);
 
-        // Botão de Excluir Planilha / Adicionar Nova Planilha na Barra Superior
         btnDeleteSheet.addEventListener('click', () => {
             if (confirm("Deseja excluir a planilha atual desta sala para adicionar uma nova?")) {
                 excelData = [];
@@ -401,20 +399,22 @@
                     let headerRowIndex = 0;
                     for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
                         const rowStr = JSON.stringify(rawJson[i]).toLowerCase();
-                        if (rowStr.includes('rastreamento') || rowStr.includes('rastreio') || rowStr.includes('etiqueta') || rowStr.includes('tracking') || rowStr.includes('shipping')) {
+                        if (rowStr.includes('rastreamento') || rowStr.includes('rastreio') || rowStr.includes('etiqueta') || rowStr.includes('tracking') || rowStr.includes('shipping') || rowStr.includes('pedido')) {
                             headerRowIndex = i;
                             break;
                         }
                     }
 
                     const headers = rawJson[headerRowIndex];
-                    let codeColIdx = -1, prodColIdx = -1, qtyColIdx = -1;
+                    let codeColIdx = -1, orderColIdx = -1, prodColIdx = -1, qtyColIdx = -1;
 
-                    // Procura rigorosamente pela coluna de rastreio/etiqueta real
                     headers.forEach((h, idx) => {
                         const lower = String(h || '').toLowerCase();
                         if (codeColIdx === -1 && (lower.includes('rastreio') || lower.includes('rastreamento') || lower.includes('etiqueta') || lower.includes('tracking') || lower.includes('shipping'))) {
                             codeColIdx = idx;
+                        }
+                        if (orderColIdx === -1 && (lower.includes('pedido') || lower.includes('order') || lower.includes('nº'))) {
+                            orderColIdx = idx;
                         }
                         if (prodColIdx === -1 && (lower.includes('produto') || lower.includes('descrição') || lower.includes('descricao') || lower.includes('título') || lower.includes('titulo') || lower.includes('item'))) {
                             prodColIdx = idx;
@@ -431,10 +431,18 @@
                         const rowCols = rawJson[i];
                         if (!rowCols || rowCols.every(cell => String(cell).trim() === "")) continue;
 
-                        const codeVal = String(rowCols[codeColIdx] || '').trim();
-                        
-                        // Validação rígida: descarta códigos inválidos, curtos ou IDs gigantes que não são etiquetas
-                        if (!codeVal || codeVal.length < 5 || codeVal.length > 30 || codeVal.toLowerCase().includes('o pacote não estava') || codeVal.toLowerCase().includes('id')) continue;
+                        let codeVal = String(rowCols[codeColIdx] || '').trim();
+                        let orderVal = orderColIdx !== -1 ? String(rowCols[orderColIdx] || '').trim() : '';
+
+                        // Validação estrita para garantir que puxe apenas etiquetas reais (ex: que contenham letras e números ou comecem com prefixos conhecidos)
+                        if (!codeVal || codeVal.length < 5 || codeVal.length > 35 || codeVal.toLowerCase().includes('o pacote não estava') || /^\d+$/.test(codeVal)) {
+                            // Se a coluna de rastreio falhar e houver número de pedido válido, usa ele
+                            if (orderVal && orderVal.length >= 5) {
+                                codeVal = orderVal;
+                            } else {
+                                continue;
+                            }
+                        }
 
                         const prodVal = prodColIdx !== -1 && rowCols[prodColIdx] ? String(rowCols[prodColIdx]).trim() : 'Produto não informado';
                         const qtyVal = qtyColIdx !== -1 && rowCols[qtyColIdx] ? String(rowCols[qtyColIdx]).trim() : '1';
@@ -449,6 +457,7 @@
 
                         newItems.push({
                             code: codeVal,
+                            order: orderVal,
                             product: prodVal,
                             qty: qtyVal,
                             isCanceled: isCanceled,
@@ -498,8 +507,10 @@
             const cleanCode = code.toLowerCase();
             const matchingItems = excelData.filter(item => {
                 const itemCode = String(item.code || '').trim().toLowerCase();
-                if (!itemCode) return false;
-                return itemCode === cleanCode || itemCode.includes(cleanCode) || cleanCode.includes(itemCode);
+                const itemOrder = String(item.order || '').trim().toLowerCase();
+                if (!itemCode && !itemOrder) return false;
+                return itemCode === cleanCode || itemCode.includes(cleanCode) || cleanCode.includes(itemCode) ||
+                       (itemOrder && (itemOrder === cleanCode || itemOrder.includes(cleanCode) || cleanCode.includes(itemOrder)));
             });
 
             if (matchingItems.length > 0) {
@@ -629,16 +640,27 @@
         });
 
         document.getElementById('btnExport').addEventListener('click', () => {
-            const exportData = excelData.map(row => ({
-                'Etiqueta / Rastreio': row.code,
-                'Produto': row.product,
-                'Quantidade': row.qty,
-                'Status Conferência': row.isCanceled ? 'CANCELADO' : row.status
-            }));
-            const worksheet = XLSX.utils.json_to_sheet(exportData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
-            XLSX.writeFile(workbook, `ScanCheck_${new Date().toISOString().slice(0,10)}.xlsx`);
+            if (!excelData || excelData.length === 0) {
+                alert("Não há dados para exportar.");
+                return;
+            }
+
+            try {
+                const exportData = excelData.map(row => ({
+                    'Etiqueta / Rastreio': row.code,
+                    'Produto': row.product,
+                    'Quantidade': row.qty,
+                    'Status Conferência': row.isCanceled ? 'CANCELADO' : row.status
+                }));
+
+                const worksheet = XLSX.utils.json_to_sheet(exportData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
+                XLSX.writeFile(workbook, `ScanCheck_Conferencia_${currentRoom || 'Sala'}_${new Date().toISOString().slice(0,10)}.xlsx`);
+            } catch (err) {
+                console.error("Erro ao exportar arquivo:", err);
+                alert("Erro ao gerar o arquivo de download.");
+            }
         });
     </script>
 </body>
