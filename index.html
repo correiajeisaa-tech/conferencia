@@ -169,7 +169,7 @@
                         <thead class="bg-zinc-950/80 text-zinc-400 uppercase text-[11px] tracking-wider sticky top-0 backdrop-blur-md">
                             <tr>
                                 <th class="p-4">Status</th>
-                                <th class="p-4">Etiqueta / Rastreio</th>
+                                <th class="p-4">Etiqueta / Rastreio & Pedido</th>
                                 <th class="p-4">Produto / Descrição</th>
                                 <th class="p-4">Qtd</th>
                                 <th class="p-4 text-right">Ação</th>
@@ -434,9 +434,7 @@
                         let codeVal = String(rowCols[codeColIdx] || '').trim();
                         let orderVal = orderColIdx !== -1 ? String(rowCols[orderColIdx] || '').trim() : '';
 
-                        // Validação estrita para garantir que puxe apenas etiquetas reais (ex: que contenham letras e números ou comecem com prefixos conhecidos)
-                        if (!codeVal || codeVal.length < 5 || codeVal.length > 35 || codeVal.toLowerCase().includes('o pacote não estava') || /^\d+$/.test(codeVal)) {
-                            // Se a coluna de rastreio falhar e houver número de pedido válido, usa ele
+                        if (!codeVal || codeVal.length < 5 || codeVal.length > 40 || codeVal.toLowerCase().includes('o pacote não estava')) {
                             if (orderVal && orderVal.length >= 5) {
                                 codeVal = orderVal;
                             } else {
@@ -466,7 +464,7 @@
                     }
 
                     if (newItems.length === 0) {
-                        alert("Não foram encontrados códigos de etiqueta válidos na planilha.");
+                        alert("Não foram encontrados códigos válidos na planilha.");
                         return;
                     }
 
@@ -588,9 +586,15 @@
                 else if (isConferido) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Pronto</span>`;
                 else statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Pendente</span>`;
 
+                // Exibe o código de rastreio e o número do pedido juntos na mesma coluna da tabela
+                let codeDisplay = `<span class="font-mono font-bold text-orange-400">${item.code}</span>`;
+                if (item.order && item.order !== item.code) {
+                    codeDisplay += `<span class="block text-[11px] text-zinc-400 font-mono">Pedido: ${item.order}</span>`;
+                }
+
                 tr.innerHTML = `
                     <td class="p-4">${statusBadge}</td>
-                    <td class="p-4 font-mono font-bold text-orange-400">${item.code}</td>
+                    <td class="p-4">${codeDisplay}</td>
                     <td class="p-4 text-zinc-200 font-medium max-w-xs truncate" title="${item.product}">${item.product}</td>
                     <td class="p-4 font-bold text-amber-400">${item.qty}</td>
                     <td class="p-4 text-right">
@@ -648,6 +652,7 @@
             try {
                 const exportData = excelData.map(row => ({
                     'Etiqueta / Rastreio': row.code,
+                    'Número do Pedido': row.order || '',
                     'Produto': row.product,
                     'Quantidade': row.qty,
                     'Status Conferência': row.isCanceled ? 'CANCELADO' : row.status
