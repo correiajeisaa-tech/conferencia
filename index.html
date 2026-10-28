@@ -51,9 +51,9 @@
             </div>
 
             <!-- Placar de Status & Sala Ativa -->
-            <div id="statsBar" class="hidden flex items-center gap-3 bg-zinc-950 px-4 py-2 rounded-2xl border border-zinc-800 shadow-inner">
+            <div id="statsBar" class="hidden flex items-center gap-3 bg-zinc-950 px-4 py-2 rounded-2xl border border-zinc-800 shadow-inner flex-wrap justify-center">
                 <span id="roomBadge" class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2.5 py-1 rounded-xl font-mono font-bold">Sala: -</span>
-                <div class="h-6 w-px bg-zinc-800"></div>
+                <div class="h-6 w-px bg-zinc-800 hidden md:block"></div>
                 <div class="text-center px-1">
                     <span class="text-[10px] text-zinc-500 uppercase tracking-wider block font-bold">Total</span>
                     <span id="totalCount" class="text-sm font-black text-zinc-200">0</span>
@@ -66,12 +66,19 @@
                     <span class="text-[10px] text-amber-500 uppercase tracking-wider block font-bold">Falta</span>
                     <span id="pendentesCount" class="text-sm font-black text-amber-400">0</span>
                 </div>
-                <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md ml-2">
-                    <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar
-                </button>
-                <button id="btnChangeRoom" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs px-2.5 py-2 rounded-xl transition flex items-center gap-1 font-semibold" title="Mudar de Sala">
-                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Sair / Trocar Sala
-                </button>
+                
+                <!-- Botões de Ação na Barra Superior -->
+                <div class="flex items-center gap-2 ml-2">
+                    <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar
+                    </button>
+                    <button id="btnNewSheetTop" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md" title="Substituir Planilha Atual">
+                        <i data-lucide="file-plus" class="w-3.5 h-3.5"></i> Nova Planilha
+                    </button>
+                    <button id="btnChangeRoom" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs px-2.5 py-2 rounded-xl transition flex items-center gap-1 font-semibold" title="Mudar de Sala">
+                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Sair
+                    </button>
+                </div>
             </div>
         </div>
     </header>
@@ -92,11 +99,11 @@
                 <button id="btnJoinRoom" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3.5 rounded-2xl transition shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2">
                     <i data-lucide="zap" class="w-4 h-4"></i> Entrar na Sala
                 </button>
-                <div id="roomStatusText" class="text-xs text-orange-400 font-medium hidden">Conectando à nuvem...</div>
+                <div id="roomStatusText" class="text-xs text-orange-400 font-medium hidden">Buscando histórico na nuvem...</div>
             </div>
         </section>
 
-        <!-- Passo 1: Importar Arquivo -->
+        <!-- Passo 1: Importar Arquivo / Nova Planilha -->
         <section id="importSection" class="hidden bg-zinc-900 rounded-3xl border border-zinc-800 p-8 text-center shadow-xl">
             <div class="max-w-xl mx-auto space-y-4">
                 <div class="flex justify-between items-center mb-4 pb-3 border-b border-zinc-800">
@@ -109,7 +116,7 @@
                     <i data-lucide="file-spreadsheet" class="w-8 h-8"></i>
                 </div>
                 <h2 class="text-xl font-bold">Carregar Planilha de Encomendas</h2>
-                <p class="text-sm text-zinc-400">Esta sala está vazia. Suba o arquivo do Mercado Livre ou Shopee para iniciar.</p>
+                <p class="text-sm text-zinc-400">Suba o arquivo Excel ou CSV oficial para iniciar ou substituir a conferência nesta sala.</p>
                 
                 <div class="pt-3">
                     <label for="fileInput" class="cursor-pointer bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-3.5 rounded-2xl inline-flex items-center gap-2 shadow-lg shadow-orange-600/25 transition">
@@ -216,6 +223,7 @@
         const roomInput = document.getElementById('roomInput');
         const btnJoinRoom = document.getElementById('btnJoinRoom');
         const btnChangeRoom = document.getElementById('btnChangeRoom');
+        const btnNewSheetTop = document.getElementById('btnNewSheetTop');
         const roomBadge = document.getElementById('roomBadge');
         const roomBadgeImport = document.getElementById('roomBadgeImport');
         const roomStatusText = document.getElementById('roomStatusText');
@@ -255,7 +263,7 @@
                     excelData = [];
                 }
             } catch (err) {
-                console.error("Erro na leitura inicial:", err);
+                console.error("Erro ao buscar histórico da sala:", err);
                 excelData = [];
             }
 
@@ -293,6 +301,14 @@
 
         btnChangeRoom.addEventListener('click', voltarParaSala);
 
+        btnNewSheetTop.addEventListener('click', () => {
+            if (confirm("Deseja carregar uma nova planilha nesta sala? A lista atual será substituída.")) {
+                scanWorkflow.classList.add('hidden');
+                statsBar.classList.add('hidden');
+                importSection.classList.remove('hidden');
+            }
+        });
+
         function listenToRoom(room) {
             if (unsubscribeFirestore) unsubscribeFirestore();
 
@@ -301,10 +317,9 @@
                     const data = doc.data();
                     const newItems = data.items || [];
                     
-                    if (newItems.length > 0) {
+                    if (newItems.length > 0 && importSection.classList.contains('hidden')) {
                         excelData = newItems;
                         roomSection.classList.add('hidden');
-                        importSection.classList.add('hidden');
                         scanWorkflow.classList.remove('hidden');
                         statsBar.classList.remove('hidden');
                         renderTable();
@@ -322,7 +337,7 @@
                 items: excelData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true }).catch(err => {
-                console.error("Erro ao sincronizar com a nuvem:", err);
+                console.error("Erro ao salvar na nuvem:", err);
             });
         }
 
@@ -357,7 +372,8 @@
 
                     headers.forEach((h, idx) => {
                         const lower = String(h || '').toLowerCase();
-                        if (codeColIdx === -1 && (lower.includes('rastreamento') || lower.includes('rastreio') || lower.includes('código') || lower.includes('codigo') || lower.includes('tracking') || lower.includes('shipping') || lower.includes('etiqueta') || lower.includes('nº do pedido'))) {
+                        // Procura estritamente colunas de rastreio ou etiqueta, ignorando IDs internos longos
+                        if (codeColIdx === -1 && (lower.includes('rastreamento') || lower.includes('rastreio') || lower.includes('etiqueta') || lower.includes('tracking') || lower.includes('shipping') || lower.includes('código de barras') || lower.includes('codigo de barras'))) {
                             codeColIdx = idx;
                         }
                         if (prodColIdx === -1 && (lower.includes('produto') || lower.includes('descrição') || lower.includes('descricao') || lower.includes('título') || lower.includes('titulo') || lower.includes('item'))) {
@@ -368,7 +384,17 @@
                         }
                     });
 
+                    // Fallback estrito caso não ache pelo nome exato do cabeçalho
+                    if (codeColIdx === -1) {
+                        headers.forEach((h, idx) => {
+                            const lower = String(h || '').toLowerCase();
+                            if (codeColIdx === -1 && (lower.includes('código') || lower.includes('codigo') || lower.includes('id'))) {
+                                codeColIdx = idx;
+                            }
+                        });
+                    }
                     if (codeColIdx === -1) codeColIdx = 0;
+
                     let newItems = [];
 
                     for (let i = headerRowIndex + 1; i < rawJson.length; i++) {
@@ -376,6 +402,7 @@
                         if (!rowCols || rowCols.every(cell => String(cell).trim() === "")) continue;
 
                         const codeVal = String(rowCols[codeColIdx] || '').trim();
+                        // Valida se o código parece uma etiqueta real e ignora linhas de aviso ou vazias
                         if (!codeVal || codeVal.length < 3 || codeVal.toLowerCase().includes('o pacote não estava')) continue;
 
                         const prodVal = prodColIdx !== -1 && rowCols[prodColIdx] ? String(rowCols[prodColIdx]).trim() : 'Produto não informado';
@@ -399,7 +426,7 @@
                     }
 
                     if (newItems.length === 0) {
-                        alert("Não foram encontrados códigos válidos.");
+                        alert("Não foram encontrados códigos de rastreio válidos na planilha.");
                         return;
                     }
 
@@ -410,6 +437,7 @@
                     statsBar.classList.remove('hidden');
                     renderTable();
                     updateStats();
+                    fileInput.value = ''; // Limpa o input para permitir reenvio se necessário
                     barcodeInput.focus();
 
                 } catch(err) {
@@ -537,7 +565,7 @@
         window.toggleManualCheck = function(code) {
             const item = excelData.find(i => String(i.code).trim() === String(code).trim());
             if (item) {
-                if (item.isCanceled) alert("Atenção: Este pedido está marcado como cancelado na planilha!");
+                if (item.isCanceled) alert("Atenção: Este pedido está marcado como cancelado na planilha antiga!");
                 item.status = item.status === 'Conferido' ? 'Pendente' : 'Conferido';
                 saveToCloud();
                 renderTable();
@@ -579,7 +607,7 @@
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
-            XLSX.writeFile(workbook, `ScanCheck_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.writeFile(workbook, `ScanCheck_${new Data().toISOString().slice(0,10)}.xlsx`);
         });
     </script>
 </body>
