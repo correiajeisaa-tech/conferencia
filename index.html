@@ -143,12 +143,12 @@
 
         <!-- Passo 2: Campo de Bipagem e Tabela -->
         <div id="scanWorkflow" class="hidden space-y-6">
-            <!-- Campo Principal de Bipagem -->
+            <!-- Campo Principal de Bipagem com inputmode="none" para evitar subir o teclado no coletor -->
             <section class="bg-zinc-900 rounded-3xl border-2 border-orange-500/60 p-6 scan-pulse shadow-2xl">
                 <div class="flex flex-col lg:flex-row items-center gap-4">
                     <div class="relative flex-1 w-full">
                         <i data-lucide="scan-barcode" class="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-orange-500"></i>
-                        <input type="text" id="barcodeInput" placeholder="Bipe ou digite os últimos dígitos (etiqueta ou pedido)..." autocomplete="off" autofocus class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 shadow-inner">
+                        <input type="text" id="barcodeInput" inputmode="none" placeholder="Bipe o código de barras ou rastreio..." autocomplete="off" autofocus class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 shadow-inner">
                     </div>
                     <!-- Destaque do Último Bipado -->
                     <div id="lastScanFeedback" class="w-full lg:w-[380px] px-4 py-3.5 rounded-2xl border border-zinc-800 bg-zinc-950 text-left shadow-inner">
@@ -209,7 +209,6 @@
 
         lucide.createIcons();
 
-        // Inicialização robusta do AudioContext ativada por interação do usuário
         let audioCtx = null;
         function initAudio() {
             if (!audioCtx) {
@@ -307,7 +306,7 @@
         });
 
         async function entrarNaSala(room) {
-            initAudio(); // Destrava o som ao entrar
+            initAudio();
             currentRoom = room;
             localStorage.setItem('scancheck_room', room);
             roomBadge.textContent = `Op: ${room}`;
@@ -389,10 +388,9 @@
                     const data = doc.data();
                     const cloudItems = data.items || [];
                     
-                    // Sincroniza dados da nuvem se houver alterações externas ou reloads
-                    if (JSON.stringify(cloudItems) !== JSON.stringify(excelData)) {
+                    if (cloudItems.length > 0 && cloudItems.length >= excelData.length) {
                         excelData = cloudItems;
-                        if (excelData.length > 0 && importSection.classList.contains('hidden') === false) {
+                        if (importSection.classList.contains('hidden') === false && excelData.length > 0) {
                             importSection.classList.add('hidden');
                             scanWorkflow.classList.remove('hidden');
                             statsBar.classList.remove('hidden');
@@ -541,14 +539,14 @@
         });
 
         document.addEventListener('click', (e) => {
-            initAudio(); // Destrava o som ao clicar na tela
+            initAudio();
             if (!scanWorkflow.classList.contains('hidden') && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
                 barcodeInput.focus();
             }
         });
 
         barcodeInput.addEventListener('keypress', (e) => {
-            initAudio(); // Destrava o som ao digitar
+            initAudio();
             if (e.key === 'Enter') {
                 const val = barcodeInput.value.trim();
                 barcodeInput.value = '';
