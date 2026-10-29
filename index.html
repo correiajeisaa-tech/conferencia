@@ -57,9 +57,9 @@
                 </div>
             </div>
 
-            <!-- Placar de Status & Sala Ativa -->
+            <!-- Placar de Status & Funcionário Ativo -->
             <div id="statsBar" class="hidden flex items-center gap-3 bg-zinc-950 px-4 py-2 rounded-2xl border border-zinc-800 shadow-inner flex-wrap justify-center">
-                <span id="roomBadge" class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2.5 py-1 rounded-xl font-mono font-bold">Sala: -</span>
+                <span id="roomBadge" class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2.5 py-1 rounded-xl font-mono font-bold">Op: -</span>
                 <div class="h-6 w-px bg-zinc-800 hidden md:block"></div>
                 <div class="text-center px-1">
                     <span class="text-[10px] text-zinc-500 uppercase tracking-wider block font-bold">Total</span>
@@ -89,7 +89,7 @@
                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Excluir Tudo
                     </button>
                     
-                    <button id="btnChangeRoom" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs px-2.5 py-2 rounded-xl transition flex items-center gap-1 font-semibold" title="Mudar de Sala">
+                    <button id="btnChangeRoom" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs px-2.5 py-2 rounded-xl transition flex items-center gap-1 font-semibold" title="Trocar de Funcionário">
                         <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Sair
                     </button>
                 </div>
@@ -99,19 +99,19 @@
 
     <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
 
-        <!-- Passo 0: Tela de Identificação da Sala -->
+        <!-- Passo 0: Tela de Identificação do Funcionário -->
         <section id="roomSection" class="bg-zinc-900/90 backdrop-blur-md rounded-3xl border border-zinc-800 p-8 max-w-md mx-auto text-center space-y-6 mt-12 shadow-2xl">
             <div class="w-20 h-20 bg-gradient-to-br from-orange-500 to-orange-700 text-white rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-orange-600/30 logo-glow border border-orange-400/30">
-                <i data-lucide="scan-barcode" class="w-10 h-10"></i>
+                <i data-lucide="user-check" class="w-10 h-10"></i>
             </div>
             <div>
-                <h2 class="text-xl font-bold text-white">Conectar à Sala de Expedição</h2>
-                <p class="text-xs text-zinc-400 mt-1">Digite o mesmo nome de sala no computador e no coletor para sincronizar.</p>
+                <h2 class="text-xl font-bold text-white">Identificação do Operador</h2>
+                <p class="text-xs text-zinc-400 mt-1">Digite o seu nome para iniciar a conferência.</p>
             </div>
             <div class="space-y-3">
-                <input type="text" id="roomInput" placeholder="Ex: 01" autocomplete="off" class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl px-4 py-3.5 text-center text-lg font-mono text-orange-400 placeholder-zinc-700 focus:outline-none focus:border-orange-500 shadow-inner">
+                <input type="text" id="roomInput" placeholder="Ex: João Silva" autocomplete="off" class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl px-4 py-3.5 text-center text-lg font-medium text-orange-400 placeholder-zinc-700 focus:outline-none focus:border-orange-500 shadow-inner">
                 <button id="btnJoinRoom" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3.5 rounded-2xl transition shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2">
-                    <i data-lucide="zap" class="w-4 h-4"></i> Entrar na Sala
+                    <i data-lucide="zap" class="w-4 h-4"></i> Entrar no Sistema
                 </button>
                 <div id="roomStatusText" class="text-xs text-orange-400 font-medium hidden">Conectando à nuvem...</div>
             </div>
@@ -121,16 +121,16 @@
         <section id="importSection" class="hidden bg-zinc-900 rounded-3xl border border-zinc-800 p-8 text-center shadow-xl max-w-xl mx-auto mt-6">
             <div class="space-y-4">
                 <div class="flex justify-between items-center mb-4 pb-3 border-b border-zinc-800">
-                    <span id="roomBadgeImport" class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1.5 rounded-xl font-mono font-bold">Sala: -</span>
+                    <span id="roomBadgeImport" class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1.5 rounded-xl font-mono font-bold">Op: -</span>
                     <button onclick="voltarParaSala()" class="text-xs text-zinc-400 hover:text-white bg-zinc-800 px-3 py-1.5 rounded-xl transition flex items-center gap-1 font-semibold">
-                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Trocar Sala
+                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Trocar Operador
                     </button>
                 </div>
                 <div class="w-16 h-16 bg-zinc-800 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner">
                     <i data-lucide="file-spreadsheet" class="w-8 h-8"></i>
                 </div>
                 <h2 class="text-xl font-bold">Carregar Planilha de Encomendas</h2>
-                <p class="text-sm text-zinc-400">Suba o arquivo Excel ou CSV oficial para iniciar a conferência nesta sala.</p>
+                <p class="text-sm text-zinc-400">Suba o arquivo Excel ou CSV oficial para iniciar a conferência.</p>
                 
                 <div class="pt-3">
                     <label for="fileInput" class="cursor-pointer bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-3.5 rounded-2xl inline-flex items-center gap-2 shadow-lg shadow-orange-600/25 transition">
@@ -258,8 +258,8 @@
             const savedRoom = localStorage.getItem('scancheck_room');
             if (savedRoom) {
                 currentRoom = savedRoom;
-                roomBadge.textContent = `Sala: ${savedRoom}`;
-                roomBadgeImport.textContent = `Sala: ${savedRoom}`;
+                roomBadge.textContent = `Op: ${savedRoom}`;
+                roomBadgeImport.textContent = `Op: ${savedRoom}`;
                 
                 try {
                     const docSnap = await db.collection('salas').doc(savedRoom).get();
@@ -294,8 +294,8 @@
         async function entrarNaSala(room) {
             currentRoom = room;
             localStorage.setItem('scancheck_room', room);
-            roomBadge.textContent = `Sala: ${room}`;
-            roomBadgeImport.textContent = `Sala: ${room}`;
+            roomBadge.textContent = `Op: ${room}`;
+            roomBadgeImport.textContent = `Op: ${room}`;
             roomStatusText.classList.remove('hidden');
 
             try {
@@ -331,9 +331,9 @@
         }
 
         btnJoinRoom.addEventListener('click', () => {
-            const room = roomInput.value.trim().toLowerCase();
+            const room = roomInput.value.trim();
             if (!room) {
-                alert("Digite o nome da sala!");
+                alert("Digite o nome do operador!");
                 return;
             }
             entrarNaSala(room);
@@ -356,7 +356,7 @@
         btnChangeRoom.addEventListener('click', voltarParaSala);
 
         btnDeleteSheet.addEventListener('click', () => {
-            if (confirm("Deseja excluir todos os dados atuais desta sala e começar do zero?")) {
+            if (confirm("Deseja excluir todos os dados atuais deste operador e começar do zero?")) {
                 excelData = [];
                 saveToCloud();
                 scanWorkflow.classList.add('hidden');
@@ -475,7 +475,8 @@
                             qty: qtyVal,
                             isCanceled: isCanceled,
                             status: 'Pendente',
-                            scanCount: 0
+                            scanCount: 0,
+                            operator: '' // Guarda quem conferiu
                         });
                     }
 
@@ -514,7 +515,7 @@
 
         fileInputTop.addEventListener('change', (e) => {
             if (e.target.files[0]) {
-                if (confirm("Deseja somar os pedidos desta nova planilha junto com os que já estão na sala?")) {
+                if (confirm("Deseja somar os pedidos desta nova planilha junto com os que já estão no sistema?")) {
                     processExcelFile(e.target.files[0], true);
                 }
             }
@@ -538,13 +539,11 @@
         function processBarcode(inputVal) {
             const cleanInput = inputVal.toLowerCase();
 
-            // Busca na lista permitindo código completo, pedido completo, ou correspondência por final/parcial (ex: últimos dígitos)
             const matchingItems = excelData.filter(item => {
                 const itemCode = String(item.code || '').trim().toLowerCase();
                 const itemOrder = String(item.order || '').trim().toLowerCase();
                 if (!itemCode && !itemOrder) return false;
 
-                // Verifica igualdade ou se o input corresponde ao final da etiqueta ou do pedido
                 const matchCode = itemCode === cleanInput || itemCode.includes(cleanInput) || cleanInput.includes(itemCode) || itemCode.endsWith(cleanInput);
                 const matchOrder = itemOrder && (itemOrder === cleanInput || itemOrder.includes(cleanInput) || cleanInput.includes(itemOrder) || itemOrder.endsWith(cleanInput));
 
@@ -555,6 +554,7 @@
                 const foundItem = matchingItems[0];
 
                 foundItem.scanCount = (foundItem.scanCount || 0) + 1;
+                foundItem.operator = currentRoom; // Registra o nome do operador atual que conferiu
 
                 if (foundItem.scanCount > 1) {
                     playErrorSound();
@@ -668,6 +668,7 @@
                     alert("Atenção: Este pedido está marcado como cancelado na planilha!");
                 }
                 item.status = item.status === 'Conferido' ? 'Pendente' : 'Conferido';
+                item.operator = currentRoom; // Registra o operador que fez o check manual
                 saveToCloud();
                 renderTable();
                 updateStats();
@@ -707,11 +708,13 @@
             }
 
             try {
+                // Inclui a coluna do Operador na exportação para o Excel
                 const exportData = excelData.map(row => ({
                     'Etiqueta / Rastreio': row.code,
                     'Número do Pedido': row.order || '',
                     'Situação': row.product,
                     'Quantidade': row.qty,
+                    'Operador Conferente': row.operator || '',
                     'Vezes Bipada': row.scanCount || 0,
                     'Status Conferência': row.isCanceled ? 'CANCELADO' : ((row.scanCount || 0) > 1 ? 'DUPLICADA (BIPADA 2+ VEZES)' : row.status)
                 }));
@@ -719,7 +722,10 @@
                 const worksheet = XLSX.utils.json_to_sheet(exportData);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
-                XLSX.writeFile(workbook, `ScanCheck_Conferencia_${currentRoom || 'Sala'}_${new Date().toISOString().slice(0,10)}.xlsx`);
+                
+                // Nome do arquivo baixado agora inclui o nome do funcionário conferente
+                const safeOperatorName = currentRoom.replace(/[^a-zA-Z0-9]/g, '_');
+                XLSX.writeFile(workbook, `ScanCheck_${safeOperatorName}_${new Date().toISOString().slice(0,10)}.xlsx`);
             } catch (err) {
                 console.error("Erro ao exportar arquivo:", err);
                 alert("Erro ao gerar o arquivo de download.");
