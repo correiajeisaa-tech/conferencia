@@ -209,18 +209,33 @@
 
         lucide.createIcons();
 
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // Inicialização robusta do AudioContext ativada por interação do usuário
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
         function playBeep(freq = 880, type = 'sine', duration = 0.15) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = type;
-            osc.frequency.value = freq;
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
-            osc.stop(audioCtx.currentTime + duration);
+            initAudio();
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.error("Erro ao reproduzir som:", e);
+            }
         }
 
         function playSuccessSound() { playBeep(880, 'sine', 0.12); setTimeout(() => playBeep(1320, 'sine', 0.15), 100); }
@@ -292,6 +307,7 @@
         });
 
         async function entrarNaSala(room) {
+            initAudio(); // Destrava o som ao entrar
             currentRoom = room;
             localStorage.setItem('scancheck_room', room);
             roomBadge.textContent = `Op: ${room}`;
@@ -371,13 +387,16 @@
             unsubscribeFirestore = db.collection('salas').doc(room).onSnapshot((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
-                    const newItems = data.items || [];
+                    const cloudItems = data.items || [];
                     
-                    if (newItems.length > 0 && importSection.classList.contains('hidden')) {
-                        excelData = newItems;
-                        roomSection.classList.add('hidden');
-                        scanWorkflow.classList.remove('hidden');
-                        statsBar.classList.remove('hidden');
+                    // Sincroniza dados da nuvem se houver alterações externas ou reloads
+                    if (JSON.stringify(cloudItems) !== JSON.stringify(excelData)) {
+                        excelData = cloudItems;
+                        if (excelData.length > 0 && importSection.classList.contains('hidden') === false) {
+                            importSection.classList.add('hidden');
+                            scanWorkflow.classList.remove('hidden');
+                            statsBar.classList.remove('hidden');
+                        }
                         renderTable();
                         updateStats();
                     }
@@ -476,7 +495,7 @@
                             isCanceled: isCanceled,
                             status: 'Pendente',
                             scanCount: 0,
-                            operator: '' // Guarda quem conferiu
+                            operator: ''
                         });
                     }
 
@@ -522,12 +541,14 @@
         });
 
         document.addEventListener('click', (e) => {
+            initAudio(); // Destrava o som ao clicar na tela
             if (!scanWorkflow.classList.contains('hidden') && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
                 barcodeInput.focus();
             }
         });
 
         barcodeInput.addEventListener('keypress', (e) => {
+            initAudio(); // Destrava o som ao digitar
             if (e.key === 'Enter') {
                 const val = barcodeInput.value.trim();
                 barcodeInput.value = '';
@@ -554,7 +575,7 @@
                 const foundItem = matchingItems[0];
 
                 foundItem.scanCount = (foundItem.scanCount || 0) + 1;
-                foundItem.operator = currentRoom; // Registra o nome do operador atual que conferiu
+                foundItem.operator = currentRoom;
 
                 if (foundItem.scanCount > 1) {
                     playErrorSound();
@@ -662,13 +683,14 @@
         }
 
         window.toggleManualCheck = function(code) {
+            initAudio();
             const item = excelData.find(i => String(i.code).trim() === String(code).trim());
             if (item) {
                 if (item.isCanceled) {
                     alert("Atenção: Este pedido está marcado como cancelado na planilha!");
                 }
                 item.status = item.status === 'Conferido' ? 'Pendente' : 'Conferido';
-                item.operator = currentRoom; // Registra o operador que fez o check manual
+                item.operator = currentRoom;
                 saveToCloud();
                 renderTable();
                 updateStats();
@@ -708,7 +730,6 @@
             }
 
             try {
-                // Inclui a coluna do Operador na exportação para o Excel
                 const exportData = excelData.map(row => ({
                     'Etiqueta / Rastreio': row.code,
                     'Número do Pedido': row.order || '',
@@ -723,7 +744,6 @@
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
                 
-                // Nome do arquivo baixado agora inclui o nome do funcionário conferente
                 const safeOperatorName = currentRoom.replace(/[^a-zA-Z0-9]/g, '_');
                 XLSX.writeFile(workbook, `ScanCheck_${safeOperatorName}_${new Date().toISOString().slice(0,10)}.xlsx`);
             } catch (err) {
