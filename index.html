@@ -28,6 +28,13 @@
         .logo-glow {
             filter: drop-shadow(0 0 12px rgba(249, 115, 22, 0.5));
         }
+        /* Permite selecionar e copiar texto em toda a página */
+        body {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
+            -ms-user-select: text !important;
+        }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen font-sans">
@@ -67,14 +74,13 @@
                     <span id="pendentesCount" class="text-sm font-black text-amber-400">0</span>
                 </div>
                 
-                <!-- Botões de Ação na Barra Superior (Com o botão Adicionar Planilha) -->
+                <!-- Botões de Ação na Barra Superior -->
                 <div class="flex items-center gap-2 ml-2 flex-wrap justify-center">
                     <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md">
                         <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar
                     </button>
                     
-                    <!-- BOTÃO ADICIONAR MAIS PLANILHA (OPÇÃO DE SOMAR E CONFERIR SIMULTANEAMENTE) -->
-                    <label for="fileInputTop" class="cursor-pointer bg-orange-600 hover:bg-orange-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md" title="Somar outra planilha (ex: Shopee + Mercado Livre)">
+                    <label for="fileInputTop" class="cursor-pointer bg-orange-600 hover:bg-orange-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md" title="Somar outra planilha">
                         <i data-lucide="file-plus" class="w-3.5 h-3.5"></i> Adicionar Planilha
                     </label>
                     <input type="file" id="fileInputTop" accept=".xlsx, .xls, .csv" class="hidden">
@@ -152,8 +158,9 @@
                         </div>
                         <div class="text-[11px] text-zinc-500 font-medium">Etiqueta:</div>
                         <span id="lastScannedCodeText" class="block text-sm font-mono font-bold text-orange-400 truncate">Nenhum</span>
-                        <div id="lastScanProductInfo" class="mt-1 text-xs text-zinc-200 truncate font-semibold">Produto: -</div>
-                        <div id="lastScanQtyInfo" class="text-xs text-amber-400 font-bold">Qtd: -</div>
+                        <div id="lastScanOrderInfo" class="mt-1 text-xs text-zinc-300 font-mono font-bold">Pedido: -</div>
+                        <div id="lastScanProductInfo" class="mt-1 text-xs text-zinc-200 font-semibold">Situação: -</div>
+                        <div id="lastScanQtyInfo" class="text-xs text-amber-400 font-bold mt-0.5">Qtd: -</div>
                     </div>
                 </div>
             </section>
@@ -178,7 +185,7 @@
                             <tr>
                                 <th class="p-4">Status</th>
                                 <th class="p-4">Etiqueta / Rastreio & Pedido</th>
-                                <th class="p-4">Produto / Descrição</th>
+                                <th class="p-4">Situação</th>
                                 <th class="p-4">Qtd</th>
                                 <th class="p-4 text-right">Ação</th>
                             </tr>
@@ -242,6 +249,7 @@
         const lastScanFeedback = document.getElementById('lastScanFeedback');
         const lastScannedCodeText = document.getElementById('lastScannedCodeText');
         const lastScanStatusText = document.getElementById('lastScanStatusText');
+        const lastScanOrderInfo = document.getElementById('lastScanOrderInfo');
         const lastScanProductInfo = document.getElementById('lastScanProductInfo');
         const lastScanQtyInfo = document.getElementById('lastScanQtyInfo');
 
@@ -420,3 +428,281 @@
                             codeColIdx = idx;
                         }
                         if (orderColIdx === -1 && (lower.includes('pedido') || lower.includes('order') || lower.includes('nº') || lower.includes('venda'))) {
+                            orderColIdx = idx;
+                        }
+                        if (prodColIdx === -1 && (lower.includes('descrição do status') || lower.includes('descricao do status') || lower.includes('status') || lower.includes('produto') || lower.includes('descrição') || lower.includes('descricao') || lower.includes('título') || lower.includes('titulo') || lower.includes('item'))) {
+                            prodColIdx = idx;
+                        }
+                        if (qtyColIdx === -1 && (lower.includes('quantidade') || lower.includes('qtd') || lower.includes('unidades'))) {
+                            qtyColIdx = idx;
+                        }
+                    });
+
+                    if (codeColIdx === -1) {
+                        alert("Erro: Não foi encontrada a coluna de Rastreio, Etiqueta ou Código de Barras na planilha.");
+                        return;
+                    }
+
+                    let newItems = [];
+
+                    for (let i = headerRowIndex + 1; i < rawJson.length; i++) {
+                        const rowCols = rawJson[i];
+                        if (!rowCols || rowCols.every(cell => String(cell).trim() === "")) continue;
+
+                        let codeVal = String(rowCols[codeColIdx] || '').trim();
+                        let orderVal = orderColIdx !== -1 ? String(rowCols[orderColIdx] || '').trim() : '';
+
+                        if (!codeVal || codeVal.length < 4 || codeVal.length > 50 || codeVal.toLowerCase().includes('o pacote não estava')) {
+                            continue;
+                        }
+
+                        const prodVal = prodColIdx !== -1 && rowCols[prodColIdx] ? String(rowCols[prodColIdx]).trim() : 'Sem situação informada';
+                        const qtyVal = qtyColIdx !== -1 && rowCols[qtyColIdx] ? String(rowCols[qtyColIdx]).trim() : '1';
+
+                        let isCanceled = false;
+                        rowCols.forEach(cell => {
+                            const valStr = String(cell || '').toLowerCase();
+                            if (valStr.includes('cancelado') || valStr.includes('cancelada') || valStr.includes('canceled')) {
+                                isCanceled = true;
+                            }
+                        });
+
+                        newItems.push({
+                            code: codeVal,
+                            order: orderVal,
+                            product: prodVal,
+                            qty: qtyVal,
+                            isCanceled: isCanceled,
+                            status: 'Pendente'
+                        });
+                    }
+
+                    if (newItems.length === 0) {
+                        alert("Nenhum código válido foi extraído da coluna de etiquetas.");
+                        return;
+                    }
+
+                    if (isAppending) {
+                        excelData = excelData.concat(newItems);
+                    } else {
+                        excelData = newItems;
+                    }
+
+                    saveToCloud();
+                    importSection.classList.add('hidden');
+                    scanWorkflow.classList.remove('hidden');
+                    statsBar.classList.remove('hidden');
+                    renderTable();
+                    updateStats();
+                    fileInput.value = '';
+                    fileInputTop.value = '';
+                    barcodeInput.focus();
+
+                } catch(err) {
+                    alert("Erro ao ler a planilha.");
+                    console.error(err);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) processExcelFile(e.target.files[0], false);
+        });
+
+        fileInputTop.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                if (confirm("Deseja somar os pedidos desta nova planilha junto com os que já estão na sala?")) {
+                    processExcelFile(e.target.files[0], true);
+                }
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!scanWorkflow.classList.contains('hidden') && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+                barcodeInput.focus();
+            }
+        });
+
+        barcodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const val = barcodeInput.value.trim();
+                barcodeInput.value = '';
+                if (!val) return;
+                processBarcode(val);
+            }
+        });
+
+        function processBarcode(code) {
+            const cleanCode = code.toLowerCase();
+            const matchingItems = excelData.filter(item => {
+                const itemCode = String(item.code || '').trim().toLowerCase();
+                const itemOrder = String(item.order || '').trim().toLowerCase();
+                if (!itemCode && !itemOrder) return false;
+                return itemCode === cleanCode || itemCode.includes(cleanCode) || cleanCode.includes(itemCode) ||
+                       (itemOrder && (itemOrder === cleanCode || itemOrder.includes(cleanCode) || cleanCode.includes(itemOrder)));
+            });
+
+            if (matchingItems.length > 0) {
+                const foundItem = matchingItems[0];
+
+                if (foundItem.isCanceled) {
+                    playCanceledSound();
+                    setFeedback(code, `❌ ALERTA: PEDIDO CANCELADO!`, 'red', foundItem.product, foundItem.qty, foundItem.order);
+                    return;
+                }
+
+                if (matchingItems.length > 1) {
+                    playErrorSound();
+                    setFeedback(code, `⚠️ ERRO: Etiqueta duplicada!`, 'red', foundItem.product, foundItem.qty, foundItem.order);
+                    return;
+                }
+
+                if (foundItem.status === 'Conferido') {
+                    playErrorSound();
+                    setFeedback(code, `Já conferido anteriormente!`, 'amber', foundItem.product, foundItem.qty, foundItem.order);
+                } else {
+                    foundItem.status = 'Conferido';
+                    playSuccessSound();
+                    setFeedback(code, `Conferido com sucesso!`, 'emerald', foundItem.product, foundItem.qty, foundItem.order);
+                    saveToCloud();
+                }
+            } else {
+                playErrorSound();
+                setFeedback(code, `Não encontrado na planilha!`, 'red', 'N/A', '-', 'N/A');
+            }
+
+            renderTable();
+            updateStats();
+        }
+
+        function setFeedback(code, message, color, product, qty, order) {
+            lastScannedCodeText.textContent = code;
+            lastScanStatusText.textContent = message;
+            lastScanOrderInfo.textContent = `Pedido: ${order || 'N/A'}`;
+            lastScanProductInfo.textContent = `Situação: ${product}`;
+            lastScanQtyInfo.textContent = `Quantidade: ${qty}`;
+            
+            lastScanFeedback.className = "w-full lg:w-[380px] px-4 py-3.5 rounded-2xl border text-left transition-all duration-200 shadow-inner";
+            if (color === 'emerald') {
+                lastScanFeedback.classList.add('bg-emerald-950/40', 'border-emerald-500');
+                lastScanStatusText.className = "text-xs font-bold text-emerald-400";
+            } else if (color === 'amber') {
+                lastScanFeedback.classList.add('bg-amber-950/40', 'border-amber-500');
+                lastScanStatusText.className = "text-xs font-bold text-amber-400";
+            } else if (color === 'red') {
+                lastScanFeedback.classList.add('bg-red-950/40', 'border-red-500');
+                lastScanStatusText.className = "text-xs font-bold text-red-400";
+            }
+        }
+
+        function renderTable() {
+            tableBody.innerHTML = '';
+            const filteredData = excelData.filter(item => {
+                if (currentFilter === 'pending') return !item.isCanceled && item.status === 'Pendente';
+                if (currentFilter === 'checked') return !item.isCanceled && item.status === 'Conferido';
+                if (currentFilter === 'canceled') return item.isCanceled;
+                return true;
+            });
+
+            filteredData.forEach((item) => {
+                const tr = document.createElement('tr');
+                const isCanceled = item.isCanceled;
+                const isConferido = item.status === 'Conferido';
+
+                if (isCanceled) tr.className = 'bg-red-950/20 hover:bg-red-950/40 transition-colors border-l-4 border-red-500';
+                else if (isConferido) tr.className = 'bg-emerald-950/20 hover:bg-emerald-950/30 transition-colors';
+                else tr.className = 'hover:bg-zinc-800/40 transition-colors';
+
+                let statusBadge = '';
+                if (isCanceled) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20"><i data-lucide="ban" class="w-3.5 h-3.5"></i> Cancelado</span>`;
+                else if (isConferido) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Pronto</span>`;
+                else statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Pendente</span>`;
+
+                let codeDisplay = `<span class="font-mono font-bold text-orange-400">${item.code}</span>`;
+                if (item.order && item.order !== item.code) {
+                    codeDisplay += `<span class="block text-[11px] text-zinc-400 font-mono">Pedido: ${item.order}</span>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="p-4">${statusBadge}</td>
+                    <td class="p-4">${codeDisplay}</td>
+                    <td class="p-4 text-zinc-200 font-medium max-w-xs truncate" title="${item.product}">${item.product}</td>
+                    <td class="p-4 font-bold text-amber-400">${item.qty}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="toggleManualCheck('${item.code.replace(/'/g, "\\'")}')" class="text-xs text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-xl border border-zinc-700 transition font-medium shadow-sm">
+                            Check Manual
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        window.toggleManualCheck = function(code) {
+            const item = excelData.find(i => String(i.code).trim() === String(code).trim());
+            if (item) {
+                if (item.isCanceled) {
+                    alert("Atenção: Este pedido está marcado como cancelado na planilha!");
+                }
+                item.status = item.status === 'Conferido' ? 'Pendente' : 'Conferido';
+                saveToCloud();
+                renderTable();
+                updateStats();
+            } else {
+                console.error("Item não encontrado para check manual:", code);
+            }
+        };
+
+        function updateStats() {
+            const total = excelData.length;
+            const conferidos = excelData.filter(i => !i.isCanceled && i.status === 'Conferido').length;
+            const cancelados = excelData.filter(i => i.isCanceled).length;
+            const pendentes = total - conferidos - cancelados;
+
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('conferidosCount').textContent = conferidos;
+            document.getElementById('pendentesCount').textContent = pendentes;
+        }
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => {
+                    b.classList.remove('bg-orange-600', 'text-white', 'shadow-sm');
+                    b.classList.add('bg-transparent', 'text-zinc-400');
+                });
+                e.target.classList.remove('bg-transparent', 'text-zinc-400');
+                e.target.classList.add('bg-orange-600', 'text-white', 'shadow-sm');
+                currentFilter = e.target.dataset.filter;
+                renderTable();
+            });
+        });
+
+        document.getElementById('btnExport').addEventListener('click', () => {
+            if (!excelData || excelData.length === 0) {
+                alert("Não há dados para exportar.");
+                return;
+            }
+
+            try {
+                const exportData = excelData.map(row => ({
+                    'Etiqueta / Rastreio': row.code,
+                    'Número do Pedido': row.order || '',
+                    'Situação': row.product,
+                    'Quantidade': row.qty,
+                    'Status Conferência': row.isCanceled ? 'CANCELADO' : row.status
+                }));
+
+                const worksheet = XLSX.utils.json_to_sheet(exportData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
+                XLSX.writeFile(workbook, `ScanCheck_Conferencia_${currentRoom || 'Sala'}_${new Date().toISOString().slice(0,10)}.xlsx`);
+            } catch (err) {
+                console.error("Erro ao exportar arquivo:", err);
+                alert("Erro ao gerar o arquivo de download.");
+            }
+        });
+    </script>
+</body>
+</html>
