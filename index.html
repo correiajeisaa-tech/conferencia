@@ -165,17 +165,19 @@
                 </div>
             </section>
 
-            <!-- Tabela de Itens -->
+            <!-- Tabela de Itens com a opção "Duplicados" adicionada nos filtros -->
             <section class="bg-zinc-900 rounded-3xl border border-zinc-800 overflow-hidden shadow-xl">
                 <div class="p-4 md:p-5 border-b border-zinc-800 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 class="font-bold text-zinc-200 flex items-center gap-2">
                         <i data-lucide="layers" class="w-5 h-5 text-orange-500"></i> Fila de Conferência Simultânea
                     </h3>
-                    <div class="flex gap-1.5 bg-zinc-950 p-1 rounded-2xl border border-zinc-800">
+                    <div class="flex gap-1.5 bg-zinc-950 p-1 rounded-2xl border border-zinc-800 flex-wrap">
                         <button class="filter-btn active bg-orange-600 text-white text-xs px-3.5 py-1.5 rounded-xl font-bold transition shadow-sm" data-filter="all">Todos</button>
                         <button class="filter-btn bg-transparent text-zinc-400 text-xs px-3.5 py-1.5 rounded-xl font-medium hover:text-white transition" data-filter="pending">Pendentes</button>
                         <button class="filter-btn bg-transparent text-zinc-400 text-xs px-3.5 py-1.5 rounded-xl font-medium hover:text-white transition" data-filter="checked">Prontos</button>
                         <button class="filter-btn bg-transparent text-zinc-400 text-xs px-3.5 py-1.5 rounded-xl font-medium hover:text-white transition" data-filter="canceled">Cancelados</button>
+                        <!-- NOVO BOTÃO DE FILTRO DE DUPLICADOS -->
+                        <button class="filter-btn bg-transparent text-red-400 text-xs px-3.5 py-1.5 rounded-xl font-medium hover:text-white hover:bg-red-950/40 transition" data-filter="duplicates">Duplicados</button>
                     </div>
                 </div>
 
@@ -596,12 +598,28 @@
             }
         }
 
+        // Função auxiliar para identificar quais códigos estão duplicados na planilha
+        function getDuplicateCodes() {
+            const counts = {};
+            excelData.forEach(i => {
+                const c = String(i.code).trim().toLowerCase();
+                if (c) counts[c] = (counts[c] || 0) + 1;
+            });
+            return Object.keys(counts).filter(c => counts[c] > 1);
+        }
+
         function renderTable() {
             tableBody.innerHTML = '';
+            const duplicateCodes = getDuplicateCodes();
+
             const filteredData = excelData.filter(item => {
                 if (currentFilter === 'pending') return !item.isCanceled && item.status === 'Pendente';
                 if (currentFilter === 'checked') return !item.isCanceled && item.status === 'Conferido';
                 if (currentFilter === 'canceled') return item.isCanceled;
+                if (currentFilter === 'duplicates') {
+                    const c = String(item.code).trim().toLowerCase();
+                    return duplicateCodes.includes(c);
+                }
                 return true;
             });
 
@@ -609,13 +627,16 @@
                 const tr = document.createElement('tr');
                 const isCanceled = item.isCanceled;
                 const isConferido = item.status === 'Conferido';
+                const isDuplicate = duplicateCodes.includes(String(item.code).trim().toLowerCase());
 
-                if (isCanceled) tr.className = 'bg-red-950/20 hover:bg-red-950/40 transition-colors border-l-4 border-red-500';
+                if (isDuplicate) tr.className = 'bg-amber-950/30 hover:bg-amber-950/50 transition-colors border-l-4 border-amber-500';
+                else if (isCanceled) tr.className = 'bg-red-950/20 hover:bg-red-950/40 transition-colors border-l-4 border-red-500';
                 else if (isConferido) tr.className = 'bg-emerald-950/20 hover:bg-emerald-950/30 transition-colors';
                 else tr.className = 'hover:bg-zinc-800/40 transition-colors';
 
                 let statusBadge = '';
-                if (isCanceled) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20"><i data-lucide="ban" class="w-3.5 h-3.5"></i> Cancelado</span>`;
+                if (isDuplicate) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40"><i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Duplicado</span>`;
+                else if (isCanceled) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20"><i data-lucide="ban" class="w-3.5 h-3.5"></i> Cancelado</span>`;
                 else if (isConferido) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Pronto</span>`;
                 else statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Pendente</span>`;
 
