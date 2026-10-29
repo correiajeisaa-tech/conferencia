@@ -148,7 +148,7 @@
                 <div class="flex flex-col lg:flex-row items-center gap-4">
                     <div class="relative flex-1 w-full">
                         <i data-lucide="scan-barcode" class="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-orange-500"></i>
-                        <input type="text" id="barcodeInput" placeholder="Bipe o código de barras, rastreio ou número do pedido..." autocomplete="off" autofocus class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 shadow-inner">
+                        <input type="text" id="barcodeInput" placeholder="Bipe ou digite os últimos dígitos (etiqueta ou pedido)..." autocomplete="off" autofocus class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 shadow-inner">
                     </div>
                     <!-- Destaque do Último Bipado -->
                     <div id="lastScanFeedback" class="w-full lg:w-[380px] px-4 py-3.5 rounded-2xl border border-zinc-800 bg-zinc-950 text-left shadow-inner">
@@ -165,7 +165,7 @@
                 </div>
             </section>
 
-            <!-- Tabela de Itens com Filtro de Duplicados por Bipagem -->
+            <!-- Tabela de Itens -->
             <section class="bg-zinc-900 rounded-3xl border border-zinc-800 overflow-hidden shadow-xl">
                 <div class="p-4 md:p-5 border-b border-zinc-800 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 class="font-bold text-zinc-200 flex items-center gap-2">
@@ -475,7 +475,7 @@
                             qty: qtyVal,
                             isCanceled: isCanceled,
                             status: 'Pendente',
-                            scanCount: 0 // Controla quantas vezes foi bipada
+                            scanCount: 0
                         });
                     }
 
@@ -535,25 +535,30 @@
             }
         });
 
-        function processBarcode(code) {
-            const cleanCode = code.toLowerCase();
+        function processBarcode(inputVal) {
+            const cleanInput = inputVal.toLowerCase();
+
+            // Busca na lista permitindo código completo, pedido completo, ou correspondência por final/parcial (ex: últimos dígitos)
             const matchingItems = excelData.filter(item => {
                 const itemCode = String(item.code || '').trim().toLowerCase();
                 const itemOrder = String(item.order || '').trim().toLowerCase();
                 if (!itemCode && !itemOrder) return false;
-                return itemCode === cleanCode || itemCode.includes(cleanCode) || cleanCode.includes(itemCode) ||
-                       (itemOrder && (itemOrder === cleanCode || itemOrder.includes(cleanCode) || cleanCode.includes(itemOrder)));
+
+                // Verifica igualdade ou se o input corresponde ao final da etiqueta ou do pedido
+                const matchCode = itemCode === cleanInput || itemCode.includes(cleanInput) || cleanInput.includes(itemCode) || itemCode.endsWith(cleanInput);
+                const matchOrder = itemOrder && (itemOrder === cleanInput || itemOrder.includes(cleanInput) || cleanInput.includes(itemOrder) || itemOrder.endsWith(cleanInput));
+
+                return matchCode || matchOrder;
             });
 
-            if (matchingItems.length > 0) {
+            if (matchingItems.length === 1) {
                 const foundItem = matchingItems[0];
 
-                // Incrementa a contagem de bipagem para detectar duplicidade física de uso
                 foundItem.scanCount = (foundItem.scanCount || 0) + 1;
 
                 if (foundItem.scanCount > 1) {
                     playErrorSound();
-                    setFeedback(code, `⚠️ ALERTA: ETIQUETA JÁ BIPADA ANTERIORMENTE!`, 'red', foundItem.product, foundItem.qty, foundItem.order);
+                    setFeedback(foundItem.code, `⚠️ ALERTA: ETIQUETA JÁ BIPADA ANTERIORMENTE!`, 'red', foundItem.product, foundItem.qty, foundItem.order);
                     saveToCloud();
                     renderTable();
                     updateStats();
@@ -562,22 +567,25 @@
 
                 if (foundItem.isCanceled) {
                     playCanceledSound();
-                    setFeedback(code, `❌ ALERTA: PEDIDO CANCELADO!`, 'red', foundItem.product, foundItem.qty, foundItem.order);
+                    setFeedback(foundItem.code, `❌ ALERTA: PEDIDO CANCELADO!`, 'red', foundItem.product, foundItem.qty, foundItem.order);
                     return;
                 }
 
                 if (foundItem.status === 'Conferido') {
                     playErrorSound();
-                    setFeedback(code, `Já conferido anteriormente!`, 'amber', foundItem.product, foundItem.qty, foundItem.order);
+                    setFeedback(foundItem.code, `Já conferido anteriormente!`, 'amber', foundItem.product, foundItem.qty, foundItem.order);
                 } else {
                     foundItem.status = 'Conferido';
                     playSuccessSound();
-                    setFeedback(code, `Conferido com sucesso!`, 'emerald', foundItem.product, foundItem.qty, foundItem.order);
+                    setFeedback(foundItem.code, `Conferido com sucesso!`, 'emerald', foundItem.product, foundItem.qty, foundItem.order);
                     saveToCloud();
                 }
+            } else if (matchingItems.length > 1) {
+                playErrorSound();
+                setFeedback(inputVal, `⚠️ Vários pedidos com estes dígitos! Digite mais caracteres.`, 'red', 'Muitas coincidências', '-', 'N/A');
             } else {
                 playErrorSound();
-                setFeedback(code, `Não encontrado na planilha!`, 'red', 'N/A', '-', 'N/A');
+                setFeedback(inputVal, `Não encontrado na planilha!`, 'red', 'N/A', '-', 'N/A');
             }
 
             renderTable();
@@ -611,7 +619,7 @@
                 if (currentFilter === 'pending') return !item.isCanceled && (item.scanCount || 0) <= 1 && item.status === 'Pendente';
                 if (currentFilter === 'checked') return !item.isCanceled && (item.scanCount || 0) <= 1 && item.status === 'Conferido';
                 if (currentFilter === 'canceled') return item.isCanceled;
-                if (currentFilter === 'duplicates') return (item.scanCount || 0) > 1; // Filtra apenas as etiquetas bipadas mais de uma vez
+                if (currentFilter === 'duplicates') return (item.scanCount || 0) > 1;
                 return true;
             });
 
