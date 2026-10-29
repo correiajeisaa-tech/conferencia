@@ -67,14 +67,22 @@
                     <span id="pendentesCount" class="text-sm font-black text-amber-400">0</span>
                 </div>
                 
-                <!-- Botões de Ação na Barra Superior -->
-                <div class="flex items-center gap-2 ml-2">
+                <!-- Botões de Ação na Barra Superior (Com o botão Adicionar Planilha) -->
+                <div class="flex items-center gap-2 ml-2 flex-wrap justify-center">
                     <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md">
                         <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar
                     </button>
-                    <button id="btnDeleteSheet" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md" title="Excluir Planilha Atual e Adicionar Outra">
-                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Excluir Planilha
+                    
+                    <!-- BOTÃO ADICIONAR MAIS PLANILHA (OPÇÃO DE SOMAR E CONFERIR SIMULTANEAMENTE) -->
+                    <label for="fileInputTop" class="cursor-pointer bg-orange-600 hover:bg-orange-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md" title="Somar outra planilha (ex: Shopee + Mercado Livre)">
+                        <i data-lucide="file-plus" class="w-3.5 h-3.5"></i> Adicionar Planilha
+                    </label>
+                    <input type="file" id="fileInputTop" accept=".xlsx, .xls, .csv" class="hidden">
+
+                    <button id="btnDeleteSheet" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition font-semibold shadow-md" title="Excluir tudo e começar do zero">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Excluir Tudo
                     </button>
+                    
                     <button id="btnChangeRoom" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs px-2.5 py-2 rounded-xl transition flex items-center gap-1 font-semibold" title="Mudar de Sala">
                         <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Sair
                     </button>
@@ -103,7 +111,7 @@
             </div>
         </section>
 
-        <!-- Passo 1: Importar Arquivo / Gerenciar Planilha -->
+        <!-- Passo 1: Importar Arquivo Inicial -->
         <section id="importSection" class="hidden bg-zinc-900 rounded-3xl border border-zinc-800 p-8 text-center shadow-xl max-w-xl mx-auto mt-6">
             <div class="space-y-4">
                 <div class="flex justify-between items-center mb-4 pb-3 border-b border-zinc-800">
@@ -115,8 +123,8 @@
                 <div class="w-16 h-16 bg-zinc-800 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner">
                     <i data-lucide="file-spreadsheet" class="w-8 h-8"></i>
                 </div>
-                <h2 class="text-xl font-bold">Gerenciar Planilha da Sala</h2>
-                <p class="text-sm text-zinc-400">Suba o arquivo Excel ou CSV oficial para iniciar ou substituir a planilha atual.</p>
+                <h2 class="text-xl font-bold">Carregar Planilha de Encomendas</h2>
+                <p class="text-sm text-zinc-400">Suba o arquivo Excel ou CSV oficial para iniciar a conferência nesta sala.</p>
                 
                 <div class="pt-3">
                     <label for="fileInput" class="cursor-pointer bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-3.5 rounded-2xl inline-flex items-center gap-2 shadow-lg shadow-orange-600/25 transition">
@@ -169,7 +177,7 @@
                         <thead class="bg-zinc-950/80 text-zinc-400 uppercase text-[11px] tracking-wider sticky top-0 backdrop-blur-md">
                             <tr>
                                 <th class="p-4">Status</th>
-                                <th class="p-4">Etiqueta / Rastreio</th>
+                                <th class="p-4">Etiqueta / Rastreio & Pedido</th>
                                 <th class="p-4">Produto / Descrição</th>
                                 <th class="p-4">Qtd</th>
                                 <th class="p-4 text-right">Ação</th>
@@ -228,6 +236,7 @@
         const roomBadgeImport = document.getElementById('roomBadgeImport');
         const roomStatusText = document.getElementById('roomStatusText');
         const fileInput = document.getElementById('fileInput');
+        const fileInputTop = document.getElementById('fileInputTop');
         const barcodeInput = document.getElementById('barcodeInput');
         const tableBody = document.getElementById('tableBody');
         const lastScanFeedback = document.getElementById('lastScanFeedback');
@@ -338,7 +347,7 @@
         btnChangeRoom.addEventListener('click', voltarParaSala);
 
         btnDeleteSheet.addEventListener('click', () => {
-            if (confirm("Deseja excluir a planilha atual desta sala para adicionar uma nova?")) {
+            if (confirm("Deseja excluir todos os dados atuais desta sala e começar do zero?")) {
                 excelData = [];
                 saveToCloud();
                 scanWorkflow.classList.add('hidden');
@@ -379,10 +388,7 @@
             });
         }
 
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
+        function processExcelFile(file, isAppending = false) {
             const reader = new FileReader();
             reader.onload = (evt) => {
                 try {
@@ -399,7 +405,7 @@
                     let headerRowIndex = 0;
                     for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
                         const rowStr = JSON.stringify(rawJson[i]).toLowerCase();
-                        if (rowStr.includes('rastreamento') || rowStr.includes('rastreio') || rowStr.includes('etiqueta') || rowStr.includes('tracking') || rowStr.includes('shipping') || rowStr.includes('pedido')) {
+                        if (rowStr.includes('rastreamento') || rowStr.includes('rastreio') || rowStr.includes('etiqueta') || rowStr.includes('tracking') || rowStr.includes('shipping') || rowStr.includes('código de barras') || rowStr.includes('codigo de barras')) {
                             headerRowIndex = i;
                             break;
                         }
@@ -410,257 +416,7 @@
 
                     headers.forEach((h, idx) => {
                         const lower = String(h || '').toLowerCase();
-                        if (codeColIdx === -1 && (lower.includes('rastreio') || lower.includes('rastreamento') || lower.includes('etiqueta') || lower.includes('tracking') || lower.includes('shipping'))) {
+                        if (codeColIdx === -1 && (lower.includes('rastreio') || lower.includes('rastreamento') || lower.includes('etiqueta') || lower.includes('tracking') || lower.includes('shipping') || lower.includes('código de barras') || lower.includes('codigo de barras'))) {
                             codeColIdx = idx;
                         }
-                        if (orderColIdx === -1 && (lower.includes('pedido') || lower.includes('order') || lower.includes('nº'))) {
-                            orderColIdx = idx;
-                        }
-                        if (prodColIdx === -1 && (lower.includes('produto') || lower.includes('descrição') || lower.includes('descricao') || lower.includes('título') || lower.includes('titulo') || lower.includes('item'))) {
-                            prodColIdx = idx;
-                        }
-                        if (qtyColIdx === -1 && (lower.includes('quantidade') || lower.includes('qtd') || lower.includes('unidades'))) {
-                            qtyColIdx = idx;
-                        }
-                    });
-
-                    if (codeColIdx === -1) codeColIdx = 0;
-                    let newItems = [];
-
-                    for (let i = headerRowIndex + 1; i < rawJson.length; i++) {
-                        const rowCols = rawJson[i];
-                        if (!rowCols || rowCols.every(cell => String(cell).trim() === "")) continue;
-
-                        let codeVal = String(rowCols[codeColIdx] || '').trim();
-                        let orderVal = orderColIdx !== -1 ? String(rowCols[orderColIdx] || '').trim() : '';
-
-                        // Validação aprimorada para capturar códigos reais (incluindo rastreios com final BR dos Correios e etiquetas padrão)
-                        if (!codeVal || codeVal.length < 5 || codeVal.length > 40 || codeVal.toLowerCase().includes('o pacote não estava')) {
-                            if (orderVal && orderVal.length >= 5) {
-                                codeVal = orderVal;
-                            } else {
-                                continue;
-                            }
-                        }
-
-                        const prodVal = prodColIdx !== -1 && rowCols[prodColIdx] ? String(rowCols[prodColIdx]).trim() : 'Produto não informado';
-                        const qtyVal = qtyColIdx !== -1 && rowCols[qtyColIdx] ? String(rowCols[qtyColIdx]).trim() : '1';
-
-                        let isCanceled = false;
-                        rowCols.forEach(cell => {
-                            const valStr = String(cell || '').toLowerCase();
-                            if (valStr.includes('cancelado') || valStr.includes('cancelada') || valStr.includes('canceled')) {
-                                isCanceled = true;
-                            }
-                        });
-
-                        newItems.push({
-                            code: codeVal,
-                            order: orderVal,
-                            product: prodVal,
-                            qty: qtyVal,
-                            isCanceled: isCanceled,
-                            status: 'Pendente'
-                        });
-                    }
-
-                    if (newItems.length === 0) {
-                        alert("Não foram encontrados códigos de etiqueta válidos na planilha.");
-                        return;
-                    }
-
-                    excelData = newItems;
-                    saveToCloud();
-                    importSection.classList.add('hidden');
-                    scanWorkflow.classList.remove('hidden');
-                    statsBar.classList.remove('hidden');
-                    renderTable();
-                    updateStats();
-                    fileInput.value = '';
-                    barcodeInput.focus();
-
-                } catch(err) {
-                    alert("Erro ao ler a planilha.");
-                    console.error(err);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!scanWorkflow.classList.contains('hidden') && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
-                barcodeInput.focus();
-            }
-        });
-
-        barcodeInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const val = barcodeInput.value.trim();
-                barcodeInput.value = '';
-                if (!val) return;
-                processBarcode(val);
-            }
-        });
-
-        function processBarcode(code) {
-            const cleanCode = code.toLowerCase();
-            const matchingItems = excelData.filter(item => {
-                const itemCode = String(item.code || '').trim().toLowerCase();
-                const itemOrder = String(item.order || '').trim().toLowerCase();
-                if (!itemCode && !itemOrder) return false;
-                return itemCode === cleanCode || itemCode.includes(cleanCode) || cleanCode.includes(itemCode) ||
-                       (itemOrder && (itemOrder === cleanCode || itemOrder.includes(cleanCode) || cleanCode.includes(itemOrder)));
-            });
-
-            if (matchingItems.length > 0) {
-                const foundItem = matchingItems[0];
-
-                if (foundItem.isCanceled) {
-                    playCanceledSound();
-                    setFeedback(code, `❌ ALERTA: PEDIDO CANCELADO!`, 'red', foundItem.product, foundItem.qty);
-                    return;
-                }
-
-                if (matchingItems.length > 1) {
-                    playErrorSound();
-                    setFeedback(code, `⚠️ ERRO: Etiqueta duplicada!`, 'red', foundItem.product, foundItem.qty);
-                    return;
-                }
-
-                if (foundItem.status === 'Conferido') {
-                    playErrorSound();
-                    setFeedback(code, `Já conferido anteriormente!`, 'amber', foundItem.product, foundItem.qty);
-                } else {
-                    foundItem.status = 'Conferido';
-                    playSuccessSound();
-                    setFeedback(code, `Conferido com sucesso!`, 'emerald', foundItem.product, foundItem.qty);
-                    saveToCloud();
-                }
-            } else {
-                playErrorSound();
-                setFeedback(code, `Não encontrado na planilha!`, 'red', 'N/A', '-');
-            }
-
-            renderTable();
-            updateStats();
-        }
-
-        function setFeedback(code, message, color, product, qty) {
-            lastScannedCodeText.textContent = code;
-            lastScanStatusText.textContent = message;
-            lastScanProductInfo.textContent = `Produto: ${product}`;
-            lastScanQtyInfo.textContent = `Quantidade: ${qty}`;
-            
-            lastScanFeedback.className = "w-full lg:w-[380px] px-4 py-3.5 rounded-2xl border text-left transition-all duration-200 shadow-inner";
-            if (color === 'emerald') {
-                lastScanFeedback.classList.add('bg-emerald-950/40', 'border-emerald-500');
-                lastScanStatusText.className = "text-xs font-bold text-emerald-400";
-            } else if (color === 'amber') {
-                lastScanFeedback.classList.add('bg-amber-950/40', 'border-amber-500');
-                lastScanStatusText.className = "text-xs font-bold text-amber-400";
-            } else if (color === 'red') {
-                lastScanFeedback.classList.add('bg-red-950/40', 'border-red-500');
-                lastScanStatusText.className = "text-xs font-bold text-red-400";
-            }
-        }
-
-        function renderTable() {
-            tableBody.innerHTML = '';
-            const filteredData = excelData.filter(item => {
-                if (currentFilter === 'pending') return !item.isCanceled && item.status === 'Pendente';
-                if (currentFilter === 'checked') return !item.isCanceled && item.status === 'Conferido';
-                if (currentFilter === 'canceled') return item.isCanceled;
-                return true;
-            });
-
-            filteredData.forEach((item) => {
-                const tr = document.createElement('tr');
-                const isCanceled = item.isCanceled;
-                const isConferido = item.status === 'Conferido';
-
-                if (isCanceled) tr.className = 'bg-red-950/20 hover:bg-red-950/40 transition-colors border-l-4 border-red-500';
-                else if (isConferido) tr.className = 'bg-emerald-950/20 hover:bg-emerald-950/30 transition-colors';
-                else tr.className = 'hover:bg-zinc-800/40 transition-colors';
-
-                let statusBadge = '';
-                if (isCanceled) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20"><i data-lucide="ban" class="w-3.5 h-3.5"></i> Cancelado</span>`;
-                else if (isConferido) statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Pronto</span>`;
-                else statusBadge = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Pendente</span>`;
-
-                tr.innerHTML = `
-                    <td class="p-4">${statusBadge}</td>
-                    <td class="p-4 font-mono font-bold text-orange-400">${item.code}</td>
-                    <td class="p-4 text-zinc-200 font-medium max-w-xs truncate" title="${item.product}">${item.product}</td>
-                    <td class="p-4 font-bold text-amber-400">${item.qty}</td>
-                    <td class="p-4 text-right">
-                        <button onclick="toggleManualCheck('${item.code}')" class="text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-xl border border-zinc-700 transition font-medium">
-                            Alternar
-                        </button>
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-            });
-            lucide.createIcons();
-        }
-
-        window.toggleManualCheck = function(code) {
-            const item = excelData.find(i => String(i.code).trim() === String(code).trim());
-            if (item) {
-                if (item.isCanceled) alert("Atenção: Este pedido está marcado como cancelado na planilha!");
-                item.status = item.status === 'Conferido' ? 'Pendente' : 'Conferido';
-                saveToCloud();
-                renderTable();
-                updateStats();
-            }
-        };
-
-        function updateStats() {
-            const total = excelData.length;
-            const conferidos = excelData.filter(i => !i.isCanceled && i.status === 'Conferido').length;
-            const cancelados = excelData.filter(i => i.isCanceled).length;
-            const pendentes = total - conferidos - cancelados;
-
-            document.getElementById('totalCount').textContent = total;
-            document.getElementById('conferidosCount').textContent = conferidos;
-            document.getElementById('pendentesCount').textContent = pendentes;
-        }
-
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.filter-btn').forEach(b => {
-                    b.classList.remove('bg-orange-600', 'text-white', 'shadow-sm');
-                    b.classList.add('bg-transparent', 'text-zinc-400');
-                });
-                e.target.classList.remove('bg-transparent', 'text-zinc-400');
-                e.target.classList.add('bg-orange-600', 'text-white', 'shadow-sm');
-                currentFilter = e.target.dataset.filter;
-                renderTable();
-            });
-        });
-
-        document.getElementById('btnExport').addEventListener('click', () => {
-            if (!excelData || excelData.length === 0) {
-                alert("Não há dados para exportar.");
-                return;
-            }
-
-            try {
-                const exportData = excelData.map(row => ({
-                    'Etiqueta / Rastreio': row.code,
-                    'Produto': row.product,
-                    'Quantidade': row.qty,
-                    'Status Conferência': row.isCanceled ? 'CANCELADO' : row.status
-                }));
-
-                const worksheet = XLSX.utils.json_to_sheet(exportData);
-                const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
-                XLSX.writeFile(workbook, `ScanCheck_Conferencia_${currentRoom || 'Sala'}_${new Date().toISOString().slice(0,10)}.xlsx`);
-            } catch (err) {
-                console.error("Erro ao exportar arquivo:", err);
-                alert("Erro ao gerar o arquivo de download.");
-            }
-        });
-    </script>
-</body>
-</html>
+                        if (orderColIdx === -1 && (lower.includes('pedido') || lower.includes('order') || lower.includes('nº') || lower.includes('venda'))) {
