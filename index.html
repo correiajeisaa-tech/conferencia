@@ -267,7 +267,6 @@
         const lastScanProductInfo = document.getElementById('lastScanProductInfo');
         const lastScanQtyInfo = document.getElementById('lastScanQtyInfo');
 
-        // Controle do botão de teclado embutido
         btnToggleKeyboard.addEventListener('click', (e) => {
             e.stopPropagation();
             initAudio();
@@ -284,7 +283,6 @@
             }
         });
 
-        // Carregamento ao iniciar ou dar F5
         window.addEventListener('DOMContentLoaded', async () => {
             const savedRoom = localStorage.getItem('scancheck_room');
 
@@ -293,10 +291,7 @@
                 roomBadge.textContent = `Sala: ${savedRoom}`;
                 roomBadgeImport.textContent = `Sala: ${savedRoom}`;
 
-                // Limpa a tela antes de carregar os dados específicos desta sala
                 excelData = [];
-
-                // Puxa estritamente os dados salvos da memória local desta sala
                 const savedLocalData = localStorage.getItem('scancheck_data_' + savedRoom);
                 if (savedLocalData) {
                     try {
@@ -317,11 +312,10 @@
                     setTimeout(() => barcodeInput.focus(), 100);
                 } else {
                     scanWorkflow.classList.add('hidden');
-                    statsBar.classList.remove('hidden'); // Mantém o menu superior para permitir trocar de sala ou subir arquivo
+                    statsBar.classList.remove('hidden');
                     importSection.classList.remove('hidden');
                 }
 
-                // Sincroniza em segundo plano com o Firebase desta sala específica
                 listenToRoom(savedRoom);
             } else {
                 roomSection.classList.remove('hidden');
@@ -333,16 +327,27 @@
 
         async function entrarNaSala(room) {
             initAudio();
+            // Desconecta o escuta anterior imediatamente para evitar vazamento de dados entre salas
+            if (unsubscribeFirestore) {
+                unsubscribeFirestore();
+                unsubscribeFirestore = null;
+            }
+
             currentRoom = room;
             localStorage.setItem('scancheck_room', room);
             roomBadge.textContent = `Sala: ${room}`;
             roomBadgeImport.textContent = `Sala: ${room}`;
             roomStatusText.classList.remove('hidden');
 
-            // Reseta a lista atual para evitar resquícios da sala anterior
             excelData = [];
+            scanWorkflow.classList.add('hidden');
+            importSection.classList.add('hidden');
+            statsBar.classList.add('hidden');
 
-            // Primeiro checa se já tem algo localmente salvo para esta sala específica
+            // Limpa dados antigos da tela imediatamente
+            renderTable();
+            updateStats();
+
             const localSaved = localStorage.getItem('scancheck_data_' + room);
             if (localSaved) {
                 try {
@@ -353,7 +358,6 @@
                 } catch(e){}
             }
 
-            // Depois busca na nuvem o documento específico dessa sala
             try {
                 const docSnap = await db.collection('salas').doc(room).get();
                 if (docSnap.exists) {
@@ -402,7 +406,6 @@
                 unsubscribeFirestore();
                 unsubscribeFirestore = null;
             }
-            // Limpa a sala ativa da memória para forçar a tela de login limpa
             localStorage.removeItem('scancheck_room');
             currentRoom = '';
             excelData = [];
@@ -425,6 +428,8 @@
                 scanWorkflow.classList.add('hidden');
                 statsBar.classList.remove('hidden');
                 importSection.classList.remove('hidden');
+                renderTable();
+                updateStats();
             }
         });
 
@@ -432,11 +437,13 @@
             if (unsubscribeFirestore) unsubscribeFirestore();
 
             unsubscribeFirestore = db.collection('salas').doc(room).onSnapshot((doc) => {
+                // Blindagem extra: só aplica se o usuário ainda estiver na mesma sala
+                if (currentRoom !== room) return;
+
                 if (doc.exists) {
                     const data = doc.data();
                     const cloudItems = data.items || [];
-                    // Só atualiza se a nuvem tiver dados e estivermos de fato nessa sala
-                    if (cloudItems.length > 0 && currentRoom === room) {
+                    if (cloudItems.length > 0) {
                         excelData = cloudItems;
                         localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
                         if (importSection.classList.contains('hidden') === false && excelData.length > 0) {
@@ -455,10 +462,8 @@
 
         function saveToCloud() {
             if (!currentRoom) return;
-            // Salva na memória local específica desta sala
             localStorage.setItem('scancheck_data_' + currentRoom, JSON.stringify(excelData));
             
-            // Salva na nuvem do Firebase no documento da sala ativa
             db.collection('salas').doc(currentRoom).set({
                 items: excelData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -761,12 +766,12 @@
         };
 
         function updateStats() {
-            const total = excelData.length;
+            const total = excelData.items ? excelData.items.length : excelData.length;
             const conferidos = excelData.filter(i => !i.isCanceled && (i.scanCount || 0) <= 1 && i.status === 'Conferido').length;
             const cancelados = excelData.filter(i => i.isCanceled).length;
-            const pendentes = total - conferidos - cancelados;
+            const pendentes = excelData.length - conferidos - cancelados;
 
-            document.getElementById('totalCount').textContent = total;
+            document.getElementById('totalCount').textContent = excelData.length;
             document.getElementById('conferidosCount').textContent = conferidos;
             document.getElementById('pendentesCount').textContent = pendentes;
         }
