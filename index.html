@@ -189,7 +189,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Ativa persistência offline automática do Firebase
+        // Força sincronização estável em tempo real
         db.settings({ experimentalForceLongPolling: true });
 
         lucide.createIcons();
@@ -327,14 +327,30 @@
             renderTable();
             updateStats();
 
-            const localSaved = localStorage.getItem('scancheck_data_' + room);
-            if (localSaved) {
-                try {
-                    const parsed = JSON.parse(localSaved);
-                    if (parsed && parsed.length > 0) {
-                        excelData = parsed;
+            // Tenta buscar diretamente do Firebase antes de desistir
+            try {
+                const docSnap = await db.collection('salas').doc(room).get();
+                if (docSnap.exists) {
+                    const data = docSnap.data();
+                    if (data.items && data.items.length > 0) {
+                        excelData = data.items;
+                        localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
                     }
-                } catch(e){}
+                }
+            } catch (err) {
+                console.error("Erro ao buscar da nuvem:", err);
+            }
+
+            if (excelData.length === 0) {
+                const localSaved = localStorage.getItem('scancheck_data_' + room);
+                if (localSaved) {
+                    try {
+                        const parsed = JSON.parse(localSaved);
+                        if (parsed && parsed.length > 0) {
+                            excelData = parsed;
+                        }
+                    } catch(e){}
+                }
             }
 
             roomStatusText.classList.add('hidden');
@@ -407,15 +423,18 @@
                     const data = doc.data();
                     const cloudItems = data.items || [];
                     if (cloudItems.length > 0) {
-                        excelData = cloudItems;
-                        localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
-                        if (importSection.classList.contains('hidden') === false && excelData.length > 0) {
-                            importSection.classList.add('hidden');
-                            scanWorkflow.classList.remove('hidden');
-                            statsBar.classList.remove('hidden');
+                        // Só atualiza se houver mudança real
+                        if (JSON.stringify(excelData) !== JSON.stringify(cloudItems)) {
+                            excelData = cloudItems;
+                            localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
+                            if (importSection.classList.contains('hidden') === false && excelData.length > 0) {
+                                importSection.classList.add('hidden');
+                                scanWorkflow.classList.remove('hidden');
+                                statsBar.classList.remove('hidden');
+                            }
+                            renderTable();
+                            updateStats();
                         }
-                        renderTable();
-                        updateStats();
                     }
                 }
             }, (error) => {
@@ -427,12 +446,12 @@
             if (!currentRoom) return;
             localStorage.setItem('scancheck_data_' + currentRoom, JSON.stringify(excelData));
             
-            // Força a gravação direta no Firestore
             db.collection('salas').doc(currentRoom).set({
                 items: excelData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }).catch(err => {
                 console.error("Erro ao salvar na nuvem:", err);
+                alert("Erro de conexão com a nuvem. Verifique a internet.");
             });
         }
 
