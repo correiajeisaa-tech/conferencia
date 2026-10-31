@@ -284,17 +284,24 @@
             }
         });
 
+        // Carregamento blindado ao iniciar ou dar F5
         window.addEventListener('DOMContentLoaded', async () => {
             const savedRoom = localStorage.getItem('scancheck_room');
-            const savedLocalData = localStorage.getItem('scancheck_data_' + savedRoom);
 
             if (savedRoom) {
                 currentRoom = savedRoom;
                 roomBadge.textContent = `Sala: ${savedRoom}`;
                 roomBadgeImport.textContent = `Sala: ${savedRoom}`;
 
+                // Tenta carregar imediatamente do navegador para não zerar na tela
+                const savedLocalData = localStorage.getItem('scancheck_data_' + savedRoom);
                 if (savedLocalData) {
-                    try { excelData = JSON.parse(savedLocalData); } catch(e){}
+                    try {
+                        const parsed = JSON.parse(savedLocalData);
+                        if (parsed && parsed.length > 0) {
+                            excelData = parsed;
+                        }
+                    } catch(e) { console.error(e); }
                 }
 
                 roomSection.classList.add('hidden');
@@ -304,11 +311,12 @@
                     statsBar.classList.remove('hidden');
                     renderTable();
                     updateStats();
-                    barcodeInput.focus();
+                    setTimeout(() => barcodeInput.focus(), 100);
                 } else {
                     importSection.classList.remove('hidden');
                 }
 
+                // Sincroniza em segundo plano com o Firebase
                 listenToRoom(savedRoom);
             } else {
                 roomSection.classList.remove('hidden');
@@ -326,13 +334,28 @@
             roomBadgeImport.textContent = `Sala: ${room}`;
             roomStatusText.classList.remove('hidden');
 
+            // Primeiro checa se já tem algo localmente salvo para essa sala
+            const localSaved = localStorage.getItem('scancheck_data_' + room);
+            if (localSaved) {
+                try {
+                    const parsed = JSON.parse(localSaved);
+                    if (parsed && parsed.length > 0) {
+                        excelData = parsed;
+                    }
+                } catch(e){}
+            }
+
+            // Depois busca na nuvem para garantir que está atualizado
             try {
                 const docSnap = await db.collection('salas').doc(room).get();
                 if (docSnap.exists) {
                     const data = docSnap.data();
                     if (data.items && data.items.length > 0) {
-                        excelData = data.items;
-                        localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
+                        // Se a nuvem tiver dados e a local estiver vazia ou menor, prioriza ou mescla
+                        if (excelData.length === 0 || data.items.length >= excelData.length) {
+                            excelData = data.items;
+                            localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
+                        }
                     }
                 }
             } catch (err) {
@@ -348,7 +371,7 @@
                 statsBar.classList.remove('hidden');
                 renderTable();
                 updateStats();
-                barcodeInput.focus();
+                setTimeout(() => barcodeInput.focus(), 100);
             } else {
                 scanWorkflow.classList.add('hidden');
                 statsBar.classList.add('hidden');
@@ -402,9 +425,10 @@
                     const data = doc.data();
                     const cloudItems = data.items || [];
                     if (cloudItems.length > 0) {
+                        // Só atualiza da nuvem se houver dados válidos
                         excelData = cloudItems;
                         localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
-                        if (importSection.classList.contains('hidden') === false) {
+                        if (importSection.classList.contains('hidden') === false && excelData.length > 0) {
                             importSection.classList.add('hidden');
                             scanWorkflow.classList.remove('hidden');
                             statsBar.classList.remove('hidden');
@@ -420,7 +444,10 @@
 
         function saveToCloud() {
             if (!currentRoom) return;
+            // Salva na memória do navegador imediatamente (proteção contra F5)
             localStorage.setItem('scancheck_data_' + currentRoom, JSON.stringify(excelData));
+            
+            // Salva na nuvem do Firebase
             db.collection('salas').doc(currentRoom).set({
                 items: excelData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -530,7 +557,7 @@
                     updateStats();
                     fileInput.value = '';
                     fileInputTop.value = '';
-                    barcodeInput.focus();
+                    setTimeout(() => barcodeInput.focus(), 100);
 
                 } catch(err) {
                     alert("Erro ao ler a planilha.");
