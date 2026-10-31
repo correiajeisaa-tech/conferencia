@@ -11,6 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         .scan-pulse { animation: pulse-border 1.5s infinite; }
@@ -24,6 +25,22 @@
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen font-sans">
+
+    <section id="loginPanel" class="min-h-screen flex items-center justify-center p-6">
+        <div class="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center shadow-2xl space-y-5">
+            <div class="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center">
+                <i data-lucide="scan-barcode" class="w-10 h-10 text-white"></i>
+            </div>
+            <h1 class="text-2xl font-black text-white">SCAN<span class="text-orange-500 font-light">CHECK</span></h1>
+            <p class="text-sm text-zinc-400">Entre com a conta Google autorizada da loja para sincronizar computador e coletor.</p>
+            <button id="btnGoogleLogin" class="w-full bg-white hover:bg-zinc-200 text-zinc-900 font-bold py-3.5 rounded-2xl flex items-center justify-center gap-3">
+                <span class="text-xl font-black">G</span> Entrar com Google
+            </button>
+            <p id="loginMessage" class="text-xs text-zinc-400" role="status">Conta autorizada: petcamp.novaodessa@gmail.com</p>
+        </div>
+    </section>
+    <div id="appContent" class="hidden">
+
 
     <header class="bg-zinc-900 border-b border-zinc-800 p-4 sticky top-0 z-50 shadow-lg">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
@@ -184,13 +201,52 @@
     </main>
 
     <script>
+        // Configuração do projeto Firebase ScanCheck
         const firebaseConfig = {
-            projectId: "conferencia-expedicao-ml-shopee"
+            apiKey: "AIzaSyC_aHxEhe2v4LocoYtJq0VHm0J9tbd3Lnw",
+            authDomain: "scancheck-c1926.firebaseapp.com",
+            projectId: "scancheck-c1926",
+            storageBucket: "scancheck-c1926.firebasestorage.app",
+            messagingSenderId: "502807779822",
+            appId: "1:502807779822:web:8bba239d1ba7914c2b96ff"
         };
+
         firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
         const db = firebase.firestore();
+        const lojaAutorizada = "petcamp.novaodessa@gmail.com";
 
         db.settings({ experimentalForceLongPolling: true });
+
+        const loginPanel = document.getElementById('loginPanel');
+        const appContent = document.getElementById('appContent');
+        const btnGoogleLogin = document.getElementById('btnGoogleLogin');
+        const loginMessage = document.getElementById('loginMessage');
+
+        btnGoogleLogin.addEventListener('click', async () => {
+            try {
+                loginMessage.textContent = 'Abrindo o acesso Google...';
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.setCustomParameters({ prompt: 'select_account' });
+                await auth.signInWithPopup(provider);
+            } catch (error) {
+                console.error('Erro no login Google:', error);
+                loginMessage.textContent = 'Não foi possível entrar: ' + (error.message || error.code);
+            }
+        });
+
+        auth.onAuthStateChanged(async (user) => {
+            if (user && user.email && user.email.toLowerCase() === lojaAutorizada) {
+                loginPanel.classList.add('hidden');
+                appContent.classList.remove('hidden');
+                if (window.iniciarScanCheck) await window.iniciarScanCheck();
+            } else {
+                if (user) await auth.signOut();
+                appContent.classList.add('hidden');
+                loginPanel.classList.remove('hidden');
+                loginMessage.textContent = 'Entre com a conta autorizada: ' + lojaAutorizada;
+            }
+        });
 
         lucide.createIcons();
 
@@ -279,7 +335,7 @@
 
         setKeyboardMode(false);
 
-        window.addEventListener('DOMContentLoaded', async () => {
+        window.iniciarScanCheck = async function() {
             const savedRoom = localStorage.getItem('scancheck_room');
 
             if (savedRoom) {
@@ -319,7 +375,7 @@
                 scanWorkflow.classList.add('hidden');
                 statsBar.classList.add('hidden');
             }
-        });
+        };
 
         async function entrarNaSala(room) {
             initAudio();
@@ -841,5 +897,6 @@
             }
         });
     </script>
+    </div>
 </body>
 </html>
