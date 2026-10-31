@@ -786,52 +786,60 @@
             document.getElementById('pendentesCount').textContent = pendentes;
         }
 
-        document.getElementById('btnExport').addEventListener('click', () => {
-    if (!excelData || excelData.length === 0) {
-        alert("Não há dados para exportar.");
-        return;
-    }
-
-    try {
-        // 1. Criar uma cópia dos dados para ordenar sem alterar a tela
-        const dataToExport = [...excelData];
-
-        // 2. Ordenar por prioridade de Status:
-        // Prioridade: 1. Conferidos, 2. Pendentes, 3. Duplicados, 4. Cancelados
-        dataToExport.sort((a, b) => {
-            const getPriority = (item) => {
-                if (item.isCanceled) return 4;
-                if ((item.scanCount || 0) > 1) return 3;
-                if (item.status === 'Conferido') return 1;
-                return 2; // Pendente
-            };
-
-            return getPriority(a) - getPriority(b);
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => {
+                    b.classList.remove('bg-orange-600', 'text-white', 'shadow-sm');
+                    b.classList.add('bg-transparent', 'text-zinc-400');
+                });
+                e.target.classList.remove('bg-transparent', 'text-zinc-400');
+                e.target.classList.add('bg-orange-600', 'text-white', 'shadow-sm');
+                currentFilter = e.target.dataset.filter;
+                renderTable();
+            });
         });
 
-        // 3. Mapear as colunas organizadas para o Excel
-        const exportData = dataToExport.map(row => ({
-            'Status Conferência': row.isCanceled 
-                ? 'CANCELADO' 
-                : ((row.scanCount || 0) > 1 
-                    ? 'DUPLICADA (BIPADA 2+ VEZES)' 
-                    : row.status.toUpperCase()),
-            'Etiqueta / Rastreio': row.code,
-            'Número do Pedido': row.order || '',
-            'Situação / Produto': row.product,
-            'Quantidade': row.qty,
-            'Vezes Bipada': row.scanCount || 0
-        }));
+        document.getElementById('btnExport').addEventListener('click', () => {
+            if (!excelData || excelData.length === 0) {
+                alert("Não há dados para exportar.");
+                return;
+            }
 
-        // 4. Gerar o arquivo Excel com os dados agrupados
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
-        XLSX.writeFile(workbook, `ScanCheck_Sala_${currentRoom}_${new Date().toISOString().slice(0,10)}.xlsx`);
-    } catch (err) {
-        console.error(err);
-        alert("Erro ao exportar.");
-    }
-});
+            try {
+                const dataToExport = [...excelData];
+
+                dataToExport.sort((a, b) => {
+                    const getPriority = (item) => {
+                        if (item.isCanceled) return 4;
+                        if ((item.scanCount || 0) > 1) return 3;
+                        if (item.status === 'Conferido') return 1;
+                        return 2; 
+                    };
+                    return getPriority(a) - getPriority(b);
+                });
+
+                const exportData = dataToExport.map(row => ({
+                    'Status Conferência': row.isCanceled 
+                        ? 'CANCELADO' 
+                        : ((row.scanCount || 0) > 1 
+                            ? 'DUPLICADA (BIPADA 2+ VEZES)' 
+                            : row.status.toUpperCase()),
+                    'Etiqueta / Rastreio': row.code,
+                    'Número do Pedido': row.order || '',
+                    'Situação / Produto': row.product,
+                    'Quantidade': row.qty,
+                    'Vezes Bipada': row.scanCount || 0
+                }));
+
+                const worksheet = XLSX.utils.json_to_sheet(exportData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
+                XLSX.writeFile(workbook, `ScanCheck_Sala_${currentRoom}_${new Date().toISOString().slice(0,10)}.xlsx`);
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao exportar.");
+            }
+        });
+    </script>
 </body>
 </html>
