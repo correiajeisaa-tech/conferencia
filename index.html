@@ -683,18 +683,40 @@
         });
 
         function processBarcode(inputVal) {
-            const cleanInput = inputVal.toLowerCase();
+            const normalizeCode = (value) =>
+                String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-            const matchingItems = excelData.filter(item => {
-                const itemCode = String(item.code || '').trim().toLowerCase();
-                const itemOrder = String(item.order || '').trim().toLowerCase();
-                if (!itemCode && !itemOrder) return false;
+            const cleanInput = normalizeCode(inputVal);
+            if (!cleanInput) return;
 
-                const matchCode = itemCode === cleanInput || itemCode.includes(cleanInput) || cleanInput.includes(itemCode) || itemCode.endsWith(cleanInput);
-                const matchOrder = itemOrder && (itemOrder === cleanInput || itemOrder.includes(cleanInput) || cleanInput.includes(itemOrder) || itemOrder.endsWith(cleanInput));
-
-                return matchCode || matchOrder;
+            // Prioriza a correspondência completa para evitar falsos positivos.
+            const exactMatches = excelData.filter(item => {
+                const itemCode = normalizeCode(item.code);
+                const itemOrder = normalizeCode(item.order);
+                return itemCode === cleanInput || itemOrder === cleanInput;
             });
+
+            // Para busca manual pelos 6 últimos dígitos, prioriza o final exato
+            // da etiqueta ou do número do pedido antes de procurar trechos internos.
+            const suffixMatches = exactMatches.length ? [] : excelData.filter(item => {
+                const itemCode = normalizeCode(item.code);
+                const itemOrder = normalizeCode(item.order);
+                return (itemCode && itemCode.endsWith(cleanInput)) ||
+                       (itemOrder && itemOrder.endsWith(cleanInput));
+            });
+
+            // Busca parcial fica como último recurso, para códigos digitados maiores.
+            const partialMatches = (exactMatches.length || suffixMatches.length || cleanInput.length < 8)
+                ? []
+                : excelData.filter(item => {
+                    const itemCode = normalizeCode(item.code);
+                    const itemOrder = normalizeCode(item.order);
+                    return (itemCode && itemCode.includes(cleanInput)) ||
+                           (itemOrder && itemOrder.includes(cleanInput));
+                });
+
+            const matchingItems = exactMatches.length ? exactMatches :
+                                  suffixMatches.length ? suffixMatches : partialMatches;
 
             if (matchingItems.length === 1) {
                 const foundItem = matchingItems[0];
