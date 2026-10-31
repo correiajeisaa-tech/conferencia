@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ScanCheck - Conferência de Encomendas</title>
-    <!-- Configuração de Atalho e Logo PWA para o Coletor -->
+    <!-- Configuração de Atalho e PWA -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f97316' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 7V5a2 2 0 0 1 2-2h2'/><path d='M17 3h2a2 2 0 0 1 2 2v2'/><path d='M21 17v2a2 2 0 0 1-2 2h-2'/><path d='M7 21H5a2 2 0 0 1-2-2v-2'/><path d='M7 8h10'/><path d='M7 12h10'/><path d='M7 16h10'/></svg>">
+    <link rel="manifest" href="manifest.json">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -28,12 +29,9 @@
         .logo-glow {
             filter: drop-shadow(0 0 12px rgba(249, 115, 22, 0.5));
         }
-        /* Permite selecionar e copiar texto em toda a página */
         body {
             user-select: text !important;
             -webkit-user-select: text !important;
-            -moz-user-select: text !important;
-            -ms-user-select: text !important;
         }
     </style>
 </head>
@@ -57,9 +55,9 @@
                 </div>
             </div>
 
-            <!-- Placar de Status & Funcionário Ativo -->
+            <!-- Placar de Status & Sala Ativa -->
             <div id="statsBar" class="hidden flex items-center gap-3 bg-zinc-950 px-4 py-2 rounded-2xl border border-zinc-800 shadow-inner flex-wrap justify-center">
-                <span id="roomBadge" class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2.5 py-1 rounded-xl font-mono font-bold">Op: -</span>
+                <span id="roomBadge" class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2.5 py-1 rounded-xl font-mono font-bold">Sala: -</span>
                 <div class="h-6 w-px bg-zinc-800 hidden md:block"></div>
                 <div class="text-center px-1">
                     <span class="text-[10px] text-zinc-500 uppercase tracking-wider block font-bold">Total</span>
@@ -89,7 +87,7 @@
                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Excluir Tudo
                     </button>
                     
-                    <button id="btnChangeRoom" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs px-2.5 py-2 rounded-xl transition flex items-center gap-1 font-semibold" title="Trocar de Funcionário">
+                    <button id="btnChangeRoom" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs px-2.5 py-2 rounded-xl transition flex items-center gap-1 font-semibold" title="Mudar de Sala">
                         <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Sair
                     </button>
                 </div>
@@ -99,19 +97,19 @@
 
     <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
 
-        <!-- Passo 0: Tela de Identificação do Funcionário -->
+        <!-- Passo 0: Tela de Identificação da Sala -->
         <section id="roomSection" class="bg-zinc-900/90 backdrop-blur-md rounded-3xl border border-zinc-800 p-8 max-w-md mx-auto text-center space-y-6 mt-12 shadow-2xl">
             <div class="w-20 h-20 bg-gradient-to-br from-orange-500 to-orange-700 text-white rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-orange-600/30 logo-glow border border-orange-400/30">
-                <i data-lucide="user-check" class="w-10 h-10"></i>
+                <i data-lucide="door-open" class="w-10 h-10"></i>
             </div>
             <div>
-                <h2 class="text-xl font-bold text-white">Identificação do Operador</h2>
-                <p class="text-xs text-zinc-400 mt-1">Digite o seu nome para iniciar a conferência.</p>
+                <h2 class="text-xl font-bold text-white">Conectar à Sala de Expedição</h2>
+                <p class="text-xs text-zinc-400 mt-1">Digite o mesmo nome de sala no PC e no coletor para sincronizar em tempo real.</p>
             </div>
             <div class="space-y-3">
-                <input type="text" id="roomInput" placeholder="Ex: João Silva" autocomplete="off" class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl px-4 py-3.5 text-center text-lg font-medium text-orange-400 placeholder-zinc-700 focus:outline-none focus:border-orange-500 shadow-inner">
+                <input type="text" id="roomInput" placeholder="Ex: sala-01" autocomplete="off" class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl px-4 py-3.5 text-center text-lg font-mono text-orange-400 placeholder-zinc-700 focus:outline-none focus:border-orange-500 shadow-inner">
                 <button id="btnJoinRoom" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3.5 rounded-2xl transition shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2">
-                    <i data-lucide="zap" class="w-4 h-4"></i> Entrar no Sistema
+                    <i data-lucide="zap" class="w-4 h-4"></i> Entrar na Sala
                 </button>
                 <div id="roomStatusText" class="text-xs text-orange-400 font-medium hidden">Conectando à nuvem...</div>
             </div>
@@ -121,16 +119,16 @@
         <section id="importSection" class="hidden bg-zinc-900 rounded-3xl border border-zinc-800 p-8 text-center shadow-xl max-w-xl mx-auto mt-6">
             <div class="space-y-4">
                 <div class="flex justify-between items-center mb-4 pb-3 border-b border-zinc-800">
-                    <span id="roomBadgeImport" class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1.5 rounded-xl font-mono font-bold">Op: -</span>
+                    <span id="roomBadgeImport" class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1.5 rounded-xl font-mono font-bold">Sala: -</span>
                     <button onclick="voltarParaSala()" class="text-xs text-zinc-400 hover:text-white bg-zinc-800 px-3 py-1.5 rounded-xl transition flex items-center gap-1 font-semibold">
-                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Trocar Operador
+                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Trocar Sala
                     </button>
                 </div>
                 <div class="w-16 h-16 bg-zinc-800 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner">
                     <i data-lucide="file-spreadsheet" class="w-8 h-8"></i>
                 </div>
                 <h2 class="text-xl font-bold">Carregar Planilha de Encomendas</h2>
-                <p class="text-sm text-zinc-400">Suba o arquivo Excel ou CSV oficial para iniciar a conferência.</p>
+                <p class="text-sm text-zinc-400">Suba o arquivo Excel ou CSV oficial para iniciar a conferência nesta sala.</p>
                 
                 <div class="pt-3">
                     <label for="fileInput" class="cursor-pointer bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-3.5 rounded-2xl inline-flex items-center gap-2 shadow-lg shadow-orange-600/25 transition">
@@ -143,13 +141,19 @@
 
         <!-- Passo 2: Campo de Bipagem e Tabela -->
         <div id="scanWorkflow" class="hidden space-y-6">
-            <!-- Campo Principal de Bipagem com inputmode="none" para evitar subir o teclado no coletor -->
+            <!-- Campo Principal de Bipagem -->
             <section class="bg-zinc-900 rounded-3xl border-2 border-orange-500/60 p-6 scan-pulse shadow-2xl">
                 <div class="flex flex-col lg:flex-row items-center gap-4">
-                    <div class="relative flex-1 w-full">
-                        <i data-lucide="scan-barcode" class="w-6 h-6 absolute left-4 top-1/2 -translate-y-1/2 text-orange-500"></i>
-                        <input type="text" id="barcodeInput" inputmode="none" placeholder="Bipe o código de barras ou rastreio..." autocomplete="off" autofocus class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-4 py-4 text-lg font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 shadow-inner">
+                    <div class="relative flex-1 w-full flex items-center">
+                        <i data-lucide="scan-barcode" class="w-6 h-6 absolute left-4 text-orange-500 pointer-events-none"></i>
+                        <input type="text" id="barcodeInput" readonly placeholder="Aguardando bipagem (ou clique no teclado)..." autocomplete="off" autofocus class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-14 py-4 text-lg font-mono text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 shadow-inner">
+                        
+                        <!-- Ícone de Teclado Embutido no Campo -->
+                        <button id="btnToggleKeyboard" type="button" class="absolute right-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white p-2.5 rounded-xl border border-zinc-700 transition shadow-md flex items-center justify-center" title="Ativar/Desativar Teclado Manual">
+                            <i id="keyboardIcon" data-lucide="keyboard" class="w-5 h-5 text-orange-400"></i>
+                        </button>
                     </div>
+
                     <!-- Destaque do Último Bipado -->
                     <div id="lastScanFeedback" class="w-full lg:w-[380px] px-4 py-3.5 rounded-2xl border border-zinc-800 bg-zinc-950 text-left shadow-inner">
                         <div class="flex justify-between items-center border-b border-zinc-800/80 pb-1 mb-1.5">
@@ -211,12 +215,8 @@
 
         let audioCtx = null;
         function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
         function playBeep(freq = 880, type = 'sine', duration = 0.15) {
@@ -232,9 +232,7 @@
                 osc.start();
                 gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
                 osc.stop(audioCtx.currentTime + duration);
-            } catch (e) {
-                console.error("Erro ao reproduzir som:", e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         function playSuccessSound() { playBeep(880, 'sine', 0.12); setTimeout(() => playBeep(1320, 'sine', 0.15), 100); }
@@ -260,6 +258,7 @@
         const fileInput = document.getElementById('fileInput');
         const fileInputTop = document.getElementById('fileInputTop');
         const barcodeInput = document.getElementById('barcodeInput');
+        const btnToggleKeyboard = document.getElementById('btnToggleKeyboard');
         const tableBody = document.getElementById('tableBody');
         const lastScanFeedback = document.getElementById('lastScanFeedback');
         const lastScannedCodeText = document.getElementById('lastScannedCodeText');
@@ -268,21 +267,34 @@
         const lastScanProductInfo = document.getElementById('lastScanProductInfo');
         const lastScanQtyInfo = document.getElementById('lastScanQtyInfo');
 
+        // Controle do botão de teclado embutido
+        btnToggleKeyboard.addEventListener('click', (e) => {
+            e.stopPropagation();
+            initAudio();
+            if (barcodeInput.hasAttribute('readonly')) {
+                barcodeInput.removeAttribute('readonly');
+                barcodeInput.placeholder = "Digite o código manualmente e pressione Enter...";
+                btnToggleKeyboard.className = "absolute right-3 bg-orange-600 text-white p-2.5 rounded-xl border border-orange-500 transition shadow-md flex items-center justify-center";
+                barcodeInput.focus();
+            } else {
+                barcodeInput.setAttribute('readonly', 'true');
+                barcodeInput.placeholder = "Aguardando bipagem (ou clique no teclado)...";
+                btnToggleKeyboard.className = "absolute right-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white p-2.5 rounded-xl border border-zinc-700 transition shadow-md flex items-center justify-center";
+                barcodeInput.focus();
+            }
+        });
+
         window.addEventListener('DOMContentLoaded', async () => {
             const savedRoom = localStorage.getItem('scancheck_room');
+            const savedLocalData = localStorage.getItem('scancheck_data_' + savedRoom);
+
             if (savedRoom) {
                 currentRoom = savedRoom;
-                roomBadge.textContent = `Op: ${savedRoom}`;
-                roomBadgeImport.textContent = `Op: ${savedRoom}`;
-                
-                try {
-                    const docSnap = await db.collection('salas').doc(savedRoom).get();
-                    if (docSnap.exists) {
-                        const data = docSnap.data();
-                        excelData = data.items || [];
-                    }
-                } catch (err) {
-                    console.error("Erro ao recuperar histórico:", err);
+                roomBadge.textContent = `Sala: ${savedRoom}`;
+                roomBadgeImport.textContent = `Sala: ${savedRoom}`;
+
+                if (savedLocalData) {
+                    try { excelData = JSON.parse(savedLocalData); } catch(e){}
                 }
 
                 roomSection.classList.add('hidden');
@@ -296,6 +308,7 @@
                 } else {
                     importSection.classList.remove('hidden');
                 }
+
                 listenToRoom(savedRoom);
             } else {
                 roomSection.classList.remove('hidden');
@@ -309,21 +322,21 @@
             initAudio();
             currentRoom = room;
             localStorage.setItem('scancheck_room', room);
-            roomBadge.textContent = `Op: ${room}`;
-            roomBadgeImport.textContent = `Op: ${room}`;
+            roomBadge.textContent = `Sala: ${room}`;
+            roomBadgeImport.textContent = `Sala: ${room}`;
             roomStatusText.classList.remove('hidden');
 
             try {
                 const docSnap = await db.collection('salas').doc(room).get();
                 if (docSnap.exists) {
                     const data = docSnap.data();
-                    excelData = data.items || [];
-                } else {
-                    excelData = [];
+                    if (data.items && data.items.length > 0) {
+                        excelData = data.items;
+                        localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
+                    }
                 }
             } catch (err) {
-                console.error("Erro na leitura inicial:", err);
-                excelData = [];
+                console.error("Erro ao carregar da nuvem:", err);
             }
 
             roomStatusText.classList.add('hidden');
@@ -346,9 +359,9 @@
         }
 
         btnJoinRoom.addEventListener('click', () => {
-            const room = roomInput.value.trim();
+            const room = roomInput.value.trim().toLowerCase();
             if (!room) {
-                alert("Digite o nome do operador!");
+                alert("Digite o nome da sala!");
                 return;
             }
             entrarNaSala(room);
@@ -371,8 +384,9 @@
         btnChangeRoom.addEventListener('click', voltarParaSala);
 
         btnDeleteSheet.addEventListener('click', () => {
-            if (confirm("Deseja excluir todos os dados atuais deste operador e começar do zero?")) {
+            if (confirm("Deseja excluir todos os dados desta sala e começar do zero?")) {
                 excelData = [];
+                localStorage.removeItem('scancheck_data_' + currentRoom);
                 saveToCloud();
                 scanWorkflow.classList.add('hidden');
                 statsBar.classList.add('hidden');
@@ -387,10 +401,10 @@
                 if (doc.exists) {
                     const data = doc.data();
                     const cloudItems = data.items || [];
-                    
-                    if (cloudItems.length > 0 && cloudItems.length >= excelData.length) {
+                    if (cloudItems.length > 0) {
                         excelData = cloudItems;
-                        if (importSection.classList.contains('hidden') === false && excelData.length > 0) {
+                        localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
+                        if (importSection.classList.contains('hidden') === false) {
                             importSection.classList.add('hidden');
                             scanWorkflow.classList.remove('hidden');
                             statsBar.classList.remove('hidden');
@@ -406,6 +420,7 @@
 
         function saveToCloud() {
             if (!currentRoom) return;
+            localStorage.setItem('scancheck_data_' + currentRoom, JSON.stringify(excelData));
             db.collection('salas').doc(currentRoom).set({
                 items: excelData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -492,8 +507,7 @@
                             qty: qtyVal,
                             isCanceled: isCanceled,
                             status: 'Pendente',
-                            scanCount: 0,
-                            operator: ''
+                            scanCount: 0
                         });
                     }
 
@@ -573,7 +587,6 @@
                 const foundItem = matchingItems[0];
 
                 foundItem.scanCount = (foundItem.scanCount || 0) + 1;
-                foundItem.operator = currentRoom;
 
                 if (foundItem.scanCount > 1) {
                     playErrorSound();
@@ -664,16 +677,19 @@
                     codeDisplay += `<span class="block text-[11px] text-zinc-400 font-mono">Pedido: ${item.order}</span>`;
                 }
 
+                let actionButton = '';
+                if (isDuplicateScan) {
+                    actionButton = `<button onclick="reverterDuplicada('${item.code.replace(/'/g, "\\'")}')" class="text-xs text-orange-300 hover:text-white bg-orange-600/80 hover:bg-orange-500 px-3 py-1.5 rounded-xl border border-orange-500 transition font-bold shadow-sm flex items-center gap-1 ml-auto"><i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reverter</button>`;
+                } else {
+                    actionButton = `<button onclick="toggleManualCheck('${item.code.replace(/'/g, "\\'")}')" class="text-xs text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-xl border border-zinc-700 transition font-medium shadow-sm">Check Manual</button>`;
+                }
+
                 tr.innerHTML = `
                     <td class="p-4">${statusBadge}</td>
                     <td class="p-4">${codeDisplay}</td>
                     <td class="p-4 text-zinc-200 font-medium max-w-xs truncate" title="${item.product}">${item.product}</td>
                     <td class="p-4 font-bold text-amber-400">${item.qty}</td>
-                    <td class="p-4 text-right">
-                        <button onclick="toggleManualCheck('${item.code.replace(/'/g, "\\'")}')" class="text-xs text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-xl border border-zinc-700 transition font-medium shadow-sm">
-                            Check Manual
-                        </button>
-                    </td>
+                    <td class="p-4 text-right">${actionButton}</td>
                 `;
                 tableBody.appendChild(tr);
             });
@@ -688,12 +704,21 @@
                     alert("Atenção: Este pedido está marcado como cancelado na planilha!");
                 }
                 item.status = item.status === 'Conferido' ? 'Pendente' : 'Conferido';
-                item.operator = currentRoom;
                 saveToCloud();
                 renderTable();
                 updateStats();
-            } else {
-                console.error("Item não encontrado para check manual:", code);
+            }
+        };
+
+        window.reverterDuplicada = function(code) {
+            initAudio();
+            const item = excelData.find(i => String(i.code).trim() === String(code).trim());
+            if (item) {
+                item.scanCount = 1; 
+                item.status = 'Conferido'; 
+                saveToCloud();
+                renderTable();
+                updateStats();
             }
         };
 
@@ -733,7 +758,6 @@
                     'Número do Pedido': row.order || '',
                     'Situação': row.product,
                     'Quantidade': row.qty,
-                    'Operador Conferente': row.operator || '',
                     'Vezes Bipada': row.scanCount || 0,
                     'Status Conferência': row.isCanceled ? 'CANCELADO' : ((row.scanCount || 0) > 1 ? 'DUPLICADA (BIPADA 2+ VEZES)' : row.status)
                 }));
@@ -741,12 +765,10 @@
                 const worksheet = XLSX.utils.json_to_sheet(exportData);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Conferência");
-                
-                const safeOperatorName = currentRoom.replace(/[^a-zA-Z0-9]/g, '_');
-                XLSX.writeFile(workbook, `ScanCheck_${safeOperatorName}_${new Date().toISOString().slice(0,10)}.xlsx`);
+                XLSX.writeFile(workbook, `ScanCheck_Sala_${currentRoom}_${new Date().toISOString().slice(0,10)}.xlsx`);
             } catch (err) {
-                console.error("Erro ao exportar arquivo:", err);
-                alert("Erro ao gerar o arquivo de download.");
+                console.error(err);
+                alert("Erro ao exportar.");
             }
         });
     </script>
