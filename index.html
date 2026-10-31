@@ -104,10 +104,10 @@
             </div>
             <div>
                 <h2 class="text-xl font-bold text-white">Conectar à Sala de Expedição</h2>
-                <p class="text-xs text-zinc-400 mt-1">Digite o mesmo nome de sala no PC e no coletor para sincronizar em tempo real.</p>
+                <p class="text-xs text-zinc-400 mt-1">Digite o nome da sala (ex: jeisa ou priscila) para carregar o arquivo específico.</p>
             </div>
             <div class="space-y-3">
-                <input type="text" id="roomInput" placeholder="Ex: sala-01" autocomplete="off" class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl px-4 py-3.5 text-center text-lg font-mono text-orange-400 placeholder-zinc-700 focus:outline-none focus:border-orange-500 shadow-inner">
+                <input type="text" id="roomInput" placeholder="Ex: jeisa" autocomplete="off" class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl px-4 py-3.5 text-center text-lg font-mono text-orange-400 placeholder-zinc-700 focus:outline-none focus:border-orange-500 shadow-inner">
                 <button id="btnJoinRoom" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3.5 rounded-2xl transition shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2">
                     <i data-lucide="zap" class="w-4 h-4"></i> Entrar na Sala
                 </button>
@@ -128,7 +128,7 @@
                     <i data-lucide="file-spreadsheet" class="w-8 h-8"></i>
                 </div>
                 <h2 class="text-xl font-bold">Carregar Planilha de Encomendas</h2>
-                <p class="text-sm text-zinc-400">Suba o arquivo Excel ou CSV oficial para iniciar a conferência nesta sala.</p>
+                <p class="text-sm text-zinc-400">Esta sala ainda não tem planilha. Suba o arquivo Excel ou CSV para iniciar.</p>
                 
                 <div class="pt-3">
                     <label for="fileInput" class="cursor-pointer bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-3.5 rounded-2xl inline-flex items-center gap-2 shadow-lg shadow-orange-600/25 transition">
@@ -284,7 +284,7 @@
             }
         });
 
-        // Carregamento blindado ao iniciar ou dar F5
+        // Carregamento ao iniciar ou dar F5
         window.addEventListener('DOMContentLoaded', async () => {
             const savedRoom = localStorage.getItem('scancheck_room');
 
@@ -293,7 +293,10 @@
                 roomBadge.textContent = `Sala: ${savedRoom}`;
                 roomBadgeImport.textContent = `Sala: ${savedRoom}`;
 
-                // Tenta carregar imediatamente do navegador para não zerar na tela
+                // Limpa a tela antes de carregar os dados específicos desta sala
+                excelData = [];
+
+                // Puxa estritamente os dados salvos da memória local desta sala
                 const savedLocalData = localStorage.getItem('scancheck_data_' + savedRoom);
                 if (savedLocalData) {
                     try {
@@ -313,10 +316,12 @@
                     updateStats();
                     setTimeout(() => barcodeInput.focus(), 100);
                 } else {
+                    scanWorkflow.classList.add('hidden');
+                    statsBar.classList.remove('hidden'); // Mantém o menu superior para permitir trocar de sala ou subir arquivo
                     importSection.classList.remove('hidden');
                 }
 
-                // Sincroniza em segundo plano com o Firebase
+                // Sincroniza em segundo plano com o Firebase desta sala específica
                 listenToRoom(savedRoom);
             } else {
                 roomSection.classList.remove('hidden');
@@ -334,7 +339,10 @@
             roomBadgeImport.textContent = `Sala: ${room}`;
             roomStatusText.classList.remove('hidden');
 
-            // Primeiro checa se já tem algo localmente salvo para essa sala
+            // Reseta a lista atual para evitar resquícios da sala anterior
+            excelData = [];
+
+            // Primeiro checa se já tem algo localmente salvo para esta sala específica
             const localSaved = localStorage.getItem('scancheck_data_' + room);
             if (localSaved) {
                 try {
@@ -345,13 +353,12 @@
                 } catch(e){}
             }
 
-            // Depois busca na nuvem para garantir que está atualizado
+            // Depois busca na nuvem o documento específico dessa sala
             try {
                 const docSnap = await db.collection('salas').doc(room).get();
                 if (docSnap.exists) {
                     const data = docSnap.data();
                     if (data.items && data.items.length > 0) {
-                        // Se a nuvem tiver dados e a local estiver vazia ou menor, prioriza ou mescla
                         if (excelData.length === 0 || data.items.length >= excelData.length) {
                             excelData = data.items;
                             localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
@@ -374,7 +381,7 @@
                 setTimeout(() => barcodeInput.focus(), 100);
             } else {
                 scanWorkflow.classList.add('hidden');
-                statsBar.classList.add('hidden');
+                statsBar.classList.remove('hidden');
                 importSection.classList.remove('hidden');
             }
 
@@ -395,7 +402,11 @@
                 unsubscribeFirestore();
                 unsubscribeFirestore = null;
             }
+            // Limpa a sala ativa da memória para forçar a tela de login limpa
             localStorage.removeItem('scancheck_room');
+            currentRoom = '';
+            excelData = [];
+            
             scanWorkflow.classList.add('hidden');
             importSection.classList.add('hidden');
             statsBar.classList.add('hidden');
@@ -412,7 +423,7 @@
                 localStorage.removeItem('scancheck_data_' + currentRoom);
                 saveToCloud();
                 scanWorkflow.classList.add('hidden');
-                statsBar.classList.add('hidden');
+                statsBar.classList.remove('hidden');
                 importSection.classList.remove('hidden');
             }
         });
@@ -424,8 +435,8 @@
                 if (doc.exists) {
                     const data = doc.data();
                     const cloudItems = data.items || [];
-                    if (cloudItems.length > 0) {
-                        // Só atualiza da nuvem se houver dados válidos
+                    // Só atualiza se a nuvem tiver dados e estivermos de fato nessa sala
+                    if (cloudItems.length > 0 && currentRoom === room) {
                         excelData = cloudItems;
                         localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
                         if (importSection.classList.contains('hidden') === false && excelData.length > 0) {
@@ -444,10 +455,10 @@
 
         function saveToCloud() {
             if (!currentRoom) return;
-            // Salva na memória do navegador imediatamente (proteção contra F5)
+            // Salva na memória local específica desta sala
             localStorage.setItem('scancheck_data_' + currentRoom, JSON.stringify(excelData));
             
-            // Salva na nuvem do Firebase
+            // Salva na nuvem do Firebase no documento da sala ativa
             db.collection('salas').doc(currentRoom).set({
                 items: excelData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
