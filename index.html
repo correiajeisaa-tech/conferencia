@@ -44,6 +44,7 @@
 
             <div id="statsBar" class="hidden flex items-center gap-3 bg-zinc-950 px-4 py-2 rounded-2xl border border-zinc-800 shadow-inner flex-wrap justify-center">
                 <span id="roomBadge" class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2.5 py-1 rounded-xl font-mono font-bold">Sala: -</span>
+                <span id="cloudSyncStatus" class="text-[10px] text-zinc-400 font-semibold" role="status">Nuvem: aguardando</span>
                 <div class="h-6 w-px bg-zinc-800 hidden md:block"></div>
                 <div class="text-center px-1">
                     <span class="text-[10px] text-zinc-500 uppercase tracking-wider block font-bold">Total</span>
@@ -127,9 +128,9 @@
                 <div class="flex flex-col lg:flex-row items-center gap-4">
                     <div class="relative flex-1 w-full flex items-center">
                         <i data-lucide="scan-barcode" class="w-6 h-6 absolute left-4 text-orange-500 pointer-events-none"></i>
-                        <input type="text" id="barcodeInput" readonly placeholder="Aguardando bipagem (ou clique no teclado)..." autocomplete="off" autofocus class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-14 py-4 text-lg font-mono text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 shadow-inner">
+                        <input type="text" id="barcodeInput" inputmode="none" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" placeholder="Leitor pronto — bipar etiqueta ou ativar digitação..." autofocus class="w-full bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-14 py-4 text-lg font-mono text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 shadow-inner">
                         
-                        <button id="btnToggleKeyboard" type="button" class="absolute right-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white p-2.5 rounded-xl border border-zinc-700 transition shadow-md flex items-center justify-center" title="Ativar/Desativar Teclado Manual">
+                        <button id="btnToggleKeyboard" type="button" class="absolute right-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white p-2.5 rounded-xl border border-zinc-700 transition shadow-md flex items-center justify-center" title="Ativar teclado para digitação manual" aria-label="Ativar teclado para digitação manual">
                             <i id="keyboardIcon" data-lucide="keyboard" class="w-5 h-5 text-orange-400"></i>
                         </button>
                     </div>
@@ -189,7 +190,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Força sincronização estável em tempo real
         db.settings({ experimentalForceLongPolling: true });
 
         lucide.createIcons();
@@ -240,6 +240,7 @@
         const fileInputTop = document.getElementById('fileInputTop');
         const barcodeInput = document.getElementById('barcodeInput');
         const btnToggleKeyboard = document.getElementById('btnToggleKeyboard');
+        const cloudSyncStatus = document.getElementById('cloudSyncStatus');
         const tableBody = document.getElementById('tableBody');
         const lastScanFeedback = document.getElementById('lastScanFeedback');
         const lastScannedCodeText = document.getElementById('lastScannedCodeText');
@@ -248,21 +249,35 @@
         const lastScanProductInfo = document.getElementById('lastScanProductInfo');
         const lastScanQtyInfo = document.getElementById('lastScanQtyInfo');
 
-        btnToggleKeyboard.addEventListener('click', (e) => {
-            e.stopPropagation();
-            initAudio();
-            if (barcodeInput.hasAttribute('readonly')) {
-                barcodeInput.removeAttribute('readonly');
-                barcodeInput.placeholder = "Digite o código manualmente e pressione Enter...";
-                btnToggleKeyboard.className = "absolute right-3 bg-orange-600 text-white p-2.5 rounded-xl border border-orange-500 transition shadow-md flex items-center justify-center";
-                barcodeInput.focus();
+        let manualKeyboardMode = false;
+
+        function setKeyboardMode(manual) {
+            manualKeyboardMode = Boolean(manual);
+            barcodeInput.inputMode = manualKeyboardMode ? 'text' : 'none';
+            btnToggleKeyboard.title = manualKeyboardMode
+                ? 'Voltar ao modo leitor (ocultar teclado)'
+                : 'Ativar teclado para digitação manual';
+            btnToggleKeyboard.setAttribute('aria-label', btnToggleKeyboard.title);
+            btnToggleKeyboard.innerHTML = manualKeyboardMode
+                ? '<i data-lucide="scan-barcode" class="w-5 h-5 text-emerald-400"></i>'
+                : '<i data-lucide="keyboard" class="w-5 h-5 text-orange-400"></i>';
+            lucide.createIcons();
+
+            if (manualKeyboardMode) {
+                setTimeout(() => barcodeInput.focus(), 80);
             } else {
-                barcodeInput.setAttribute('readonly', 'true');
-                barcodeInput.placeholder = "Aguardando bipagem (ou clique no teclado)...";
-                btnToggleKeyboard.className = "absolute right-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white p-2.5 rounded-xl border border-zinc-700 transition shadow-md flex items-center justify-center";
-                barcodeInput.focus();
+                barcodeInput.blur();
+                setTimeout(() => barcodeInput.focus(), 80);
             }
+        }
+
+        btnToggleKeyboard.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setKeyboardMode(!manualKeyboardMode);
         });
+
+        setKeyboardMode(false);
 
         window.addEventListener('DOMContentLoaded', async () => {
             const savedRoom = localStorage.getItem('scancheck_room');
@@ -327,7 +342,6 @@
             renderTable();
             updateStats();
 
-            // Tenta buscar diretamente do Firebase antes de desistir
             try {
                 const docSnap = await db.collection('salas').doc(room).get();
                 if (docSnap.exists) {
@@ -415,15 +429,16 @@
 
         function listenToRoom(room) {
             if (unsubscribeFirestore) unsubscribeFirestore();
+            if (cloudSyncStatus) cloudSyncStatus.textContent = 'Nuvem: conectando...';
 
             unsubscribeFirestore = db.collection('salas').doc(room).onSnapshot((doc) => {
+                if (cloudSyncStatus) cloudSyncStatus.textContent = 'Nuvem: conectada';
                 if (currentRoom !== room) return;
 
                 if (doc.exists) {
                     const data = doc.data();
                     const cloudItems = data.items || [];
                     if (cloudItems.length > 0) {
-                        // Só atualiza se houver mudança real
                         if (JSON.stringify(excelData) !== JSON.stringify(cloudItems)) {
                             excelData = cloudItems;
                             localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
@@ -451,7 +466,6 @@
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }).catch(err => {
                 console.error("Erro ao salvar na nuvem:", err);
-                alert("Erro de conexão com a nuvem. Verifique a internet.");
             });
         }
 
@@ -580,18 +594,28 @@
 
         document.addEventListener('click', (e) => {
             initAudio();
-            if (!scanWorkflow.classList.contains('hidden') && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+            if (
+                !manualKeyboardMode &&
+                !scanWorkflow.classList.contains('hidden') &&
+                e.target.tagName !== 'BUTTON' &&
+                e.target.tagName !== 'INPUT' &&
+                !e.target.closest('button')
+            ) {
                 barcodeInput.focus();
             }
         });
 
-        barcodeInput.addEventListener('keypress', (e) => {
+        barcodeInput.addEventListener('keydown', (e) => {
             initAudio();
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' || e.key === 'NumpadEnter') {
+                e.preventDefault();
                 const val = barcodeInput.value.trim();
                 barcodeInput.value = '';
                 if (!val) return;
                 processBarcode(val);
+                if (!manualKeyboardMode) {
+                    setTimeout(() => barcodeInput.focus(), 30);
+                }
             }
         });
 
@@ -626,6 +650,9 @@
                 if (foundItem.isCanceled) {
                     playCanceledSound();
                     setFeedback(foundItem.code, `❌ ALERTA: PEDIDO CANCELADO!`, 'red', foundItem.product, foundItem.qty, foundItem.order);
+                    saveToCloud();
+                    renderTable();
+                    updateStats();
                     return;
                 }
 
