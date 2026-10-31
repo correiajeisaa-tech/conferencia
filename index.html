@@ -398,27 +398,31 @@
             renderTable();
             updateStats();
 
+            let cloudDocumentExists = false;
             try {
                 const docSnap = await db.collection('salas').doc(room).get();
+                cloudDocumentExists = docSnap.exists;
                 if (docSnap.exists) {
-                    const data = docSnap.data();
-                    if (data.items && data.items.length > 0) {
+                    const data = docSnap.data() || {};
+                    // Uma lista vazia também é uma atualização válida: significa que a sala foi limpa.
+                    if (Array.isArray(data.items)) {
                         excelData = data.items;
                         localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
                     }
                 }
             } catch (err) {
                 console.error("Erro ao buscar da nuvem:", err);
+                if (cloudSyncStatus) cloudSyncStatus.textContent = 'Nuvem: erro ao carregar';
             }
 
-            if (excelData.length === 0) {
+            // Só recupera o cache local se ainda não existir documento na nuvem.
+            // Se a nuvem contém items: [], não devemos ressuscitar uma planilha excluída.
+            if (!cloudDocumentExists) {
                 const localSaved = localStorage.getItem('scancheck_data_' + room);
                 if (localSaved) {
                     try {
                         const parsed = JSON.parse(localSaved);
-                        if (parsed && parsed.length > 0) {
-                            excelData = parsed;
-                        }
+                        if (Array.isArray(parsed)) excelData = parsed;
                     } catch(e){}
                 }
             }
@@ -492,20 +496,23 @@
                 if (currentRoom !== room) return;
 
                 if (doc.exists) {
-                    const data = doc.data();
-                    const cloudItems = data.items || [];
-                    if (cloudItems.length > 0) {
-                        if (JSON.stringify(excelData) !== JSON.stringify(cloudItems)) {
-                            excelData = cloudItems;
-                            localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
-                            if (importSection.classList.contains('hidden') === false && excelData.length > 0) {
-                                importSection.classList.add('hidden');
-                                scanWorkflow.classList.remove('hidden');
-                                statsBar.classList.remove('hidden');
-                            }
-                            renderTable();
-                            updateStats();
+                    const data = doc.data() || {};
+                    const cloudItems = Array.isArray(data.items) ? data.items : [];
+                    // Aplicar também a lista vazia, pois ela representa a exclusão feita em outro dispositivo.
+                    if (JSON.stringify(excelData) !== JSON.stringify(cloudItems)) {
+                        excelData = cloudItems;
+                        localStorage.setItem('scancheck_data_' + room, JSON.stringify(excelData));
+                        if (excelData.length === 0) {
+                            scanWorkflow.classList.add('hidden');
+                            importSection.classList.remove('hidden');
+                            statsBar.classList.remove('hidden');
+                        } else {
+                            importSection.classList.add('hidden');
+                            scanWorkflow.classList.remove('hidden');
+                            statsBar.classList.remove('hidden');
                         }
+                        renderTable();
+                        updateStats();
                     }
                 }
             }, (error) => {
